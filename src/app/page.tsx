@@ -1,17 +1,17 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { FormStep } from "./components/FormStep";
 import { IndustrySelection } from "./components/IndustrySelection";
 import { CompletionStep } from "./components/CompletionStep";
 import { ResultsStep } from "./components/ResultsStep";
-import { FormData } from "./types/form";
+import { FormAnswers } from "./types/form";
 import { generalQuestions } from "./data/questions";
 import { getQuestionsForIndustries } from "./data/industry-questions";
 
 export default function MoonCroMultiStepForm() {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
+  const [formAnswers, setFormAnswers] = useState<FormAnswers>({
     short_description: "",
     vision: "",
     market_size: "",
@@ -22,25 +22,82 @@ export default function MoonCroMultiStepForm() {
     ask_valuation: "",
     use_of_proceeds: "",
     exit_potential: "",
-    pitch_deck: "",
+    pitch_deck: null,
     industries: [],
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type } = e.target;
+    
+    if (type === 'file') {
+      const fileInput = e.target as HTMLInputElement;
+      const file = fileInput.files?.[0] || null;
+      setFormAnswers(prev => ({
+        ...prev,
+        [name]: file
+      }));
+    } else {
+      setFormAnswers(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleIndustriesChange = (industries: string[]) => {
-    setFormData({ ...formData, industries });
+    setFormAnswers(prev => ({
+      ...prev,
+      industries
+    }));
   };
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 5 + formData.industries.length + 1));
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 5 + formAnswers.industries.length + 1));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Create a formatted version of the answers for logging
+    const formattedAnswers = {
+      // General Questions
+      generalAnswers: {
+        'Short Description': formAnswers.short_description,
+        'Vision': formAnswers.vision,
+        'Market Size': formAnswers.market_size,
+        'Pain Point & USP': formAnswers.pain_point_usp,
+        'Traction': formAnswers.traction,
+        'Team': formAnswers.team,
+        'Previous Investments': formAnswers.previous_investments,
+        'Ask & Valuation': formAnswers.ask_valuation,
+        'Use of Proceeds': formAnswers.use_of_proceeds,
+        'Exit Potential': formAnswers.exit_potential,
+        'Pitch Deck': formAnswers.pitch_deck?.name || 'No file uploaded'
+      },
+      
+      // Selected Industries
+      selectedIndustries: formAnswers.industries,
+      
+      // Industry Specific Answers
+      industryAnswers: formAnswers.industries.reduce((acc, industry) => {
+        const industryQuestions = getQuestionsForIndustries([industry]);
+        const industryAnswers = industryQuestions.reduce((answers, question) => {
+          const answer = formAnswers[question.id];
+          answers[question.text] = typeof answer === 'string' ? answer : 'Not answered';
+          return answers;
+        }, {} as Record<string, string>);
+        
+        acc[industry] = industryAnswers;
+        return acc;
+      }, {} as Record<string, Record<string, string>>)
+    };
+
+    console.group('Form Submission');
+    console.log('General Answers:', formattedAnswers.generalAnswers);
+    console.log('Selected Industries:', formattedAnswers.selectedIndustries);
+    console.log('Industry-Specific Answers:', formattedAnswers.industryAnswers);
+    console.groupEnd();
+
     nextStep();
-    console.log("Submitted:", formData);
   };
 
   const getStepTitle = (currentStep: number): string => {
@@ -48,15 +105,22 @@ export default function MoonCroMultiStepForm() {
       return "General Questions";
     } else if (currentStep === 4) {
       return "Industry Selection";
-    } else if (currentStep < 5 + formData.industries.length) {
-      const currentIndustry = formData.industries[currentStep - 5];
+    } else if (currentStep < 5 + formAnswers.industries.length) {
+      const currentIndustry = formAnswers.industries[currentStep - 5];
       return `${currentIndustry} Questions`;
-    } else if (currentStep === 5 + formData.industries.length) {
-      return "Submission";
+    } else if (currentStep === 5 + formAnswers.industries.length) {
+      return "";
     } else {
       return "Results";
     }
   };
+
+  const isCurrentStepValid = useMemo(() => {
+    if (step === 4) { // Industry selection step
+      return formAnswers.industries.length > 0;
+    }
+    return true;
+  }, [step, formAnswers.industries]);
 
   return (
     <AnimatePresence mode="wait">
@@ -72,7 +136,7 @@ export default function MoonCroMultiStepForm() {
           {step === 1 && (
             <FormStep
               questions={generalQuestions.slice(0, 4)}
-              formData={formData}
+              formData={formAnswers}
               onChange={handleChange}
               title={getStepTitle(step)}
             />
@@ -81,7 +145,7 @@ export default function MoonCroMultiStepForm() {
           {step === 2 && (
             <FormStep
               questions={generalQuestions.slice(4, 7)}
-              formData={formData}
+              formData={formAnswers}
               onChange={handleChange}
               title={getStepTitle(step)}
             />
@@ -90,7 +154,7 @@ export default function MoonCroMultiStepForm() {
           {step === 3 && (
             <FormStep
               questions={generalQuestions.slice(7)}
-              formData={formData}
+              formData={formAnswers}
               onChange={handleChange}
               title={getStepTitle(step)}
             />
@@ -98,35 +162,38 @@ export default function MoonCroMultiStepForm() {
 
           {step === 4 && (
             <IndustrySelection
-              selectedIndustries={formData.industries}
+              selectedIndustries={formAnswers.industries}
               onChange={handleIndustriesChange}
               title={getStepTitle(step)}
             />
           )}
 
-          {step >= 5 && step < 5 + formData.industries.length && (
+          {step >= 5 && step < 5 + formAnswers.industries.length && (
             <FormStep
-              questions={getQuestionsForIndustries([formData.industries[step - 5]])}
-              formData={formData}
+              questions={getQuestionsForIndustries([formAnswers.industries[step - 5]])}
+              formData={formAnswers}
               onChange={handleChange}
               title={getStepTitle(step)}
             />
           )}
 
-          {step === 5 + formData.industries.length && (
+          {step === 5 + formAnswers.industries.length && (
             <CompletionStep
               onSubmit={handleSubmit}
               title={getStepTitle(step)}
             />
           )}
 
-          {step === 5 + formData.industries.length + 1 && (
-            <ResultsStep title={getStepTitle(step)} />
+          {step === 5 + formAnswers.industries.length + 1 && (
+            <ResultsStep 
+              title={getStepTitle(step)}
+              answers={formAnswers}
+            />
           )}
 
           {/* Navigation Buttons */}
           <div className="flex justify-between pt-4">
-            {step > 1 && step < (5 + formData.industries.length) && (
+            {step > 1 && step < (5 + formAnswers.industries.length) && (
               <button
                 type="button"
                 onClick={prevStep}
@@ -135,11 +202,12 @@ export default function MoonCroMultiStepForm() {
                 Back
               </button>
             )}
-            {step < (5 + formData.industries.length) && (
+            {step < (5 + formAnswers.industries.length) && (
               <button
                 type="button"
                 onClick={nextStep}
-                className={`${step > 1 ? '' : 'ml-auto'} px-4 py-2 bg-blue-900 text-white text-sm rounded-md hover:bg-blue-800`}
+                disabled={!isCurrentStepValid}
+                className={`${step > 1 ? '' : 'ml-auto'} px-4 py-2 bg-blue-900 text-white text-sm rounded-md hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 Next
               </button>

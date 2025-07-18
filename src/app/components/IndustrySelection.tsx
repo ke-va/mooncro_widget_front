@@ -5,6 +5,7 @@ interface IndustrySelectionProps {
   selectedIndustries: string[];
   onChange: (industries: string[]) => void;
   title: string;
+  isValid?: boolean;
 }
 
 const fade = {
@@ -24,8 +25,11 @@ export function IndustrySelection({ selectedIndustries, onChange, title }: Indus
     >
       <h2 className="text-lg sm:text-xl font-semibold mb-4">{title}</h2>
       <p className="mb-4 text-sm sm:text-base">
-        Select all industries your startup operates in:
+        Select all industries your startup operates in: <span className="text-red-500">*</span>
       </p>
+      {selectedIndustries.length === 0 && (
+        <p className="text-red-500 text-sm mb-4">Please select at least one industry to continue</p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
         {industryOptions.map((industry) => (

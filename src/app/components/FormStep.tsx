@@ -15,6 +15,43 @@ const fade = {
 };
 
 export function FormStep({ questions, formData, onChange, title }: FormStepProps) {
+  const renderInput = (question: Question) => {
+    switch (question.type) {
+      case 'textarea':
+        return (
+          <textarea
+            name={question.id}
+            value={formData[question.id] || ''}
+            onChange={onChange}
+            placeholder={question.text}
+            className="w-full border border-gray-300 rounded-md p-2 text-sm"
+            rows={3}
+          />
+        );
+      case 'file':
+        return (
+          <input
+            type="file"
+            name={question.id}
+            onChange={onChange}
+            accept=".pdf"
+            className="w-full border border-gray-300 rounded-md p-2 text-sm"
+          />
+        );
+      default:
+        return (
+          <input
+            type={question.type}
+            name={question.id}
+            value={formData[question.id] || ''}
+            onChange={onChange}
+            placeholder={question.text}
+            className="w-full border border-gray-300 rounded-md p-2 text-sm"
+          />
+        );
+    }
+  };
+
   return (
     <motion.div
       variants={fade}
@@ -30,25 +67,7 @@ export function FormStep({ questions, formData, onChange, title }: FormStepProps
             <label className="block font-medium mb-1 text-sm sm:text-base">
               {question.number && `${question.number}. `}{question.text}
             </label>
-            {question.type === 'textarea' ? (
-              <textarea
-                name={question.id}
-                value={formData[question.id] || ''}
-                onChange={onChange}
-                placeholder={question.text}
-                className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                rows={3}
-              />
-            ) : (
-              <input
-                type={question.type}
-                name={question.id}
-                value={formData[question.id] || ''}
-                onChange={onChange}
-                placeholder={question.text}
-                className="w-full border border-gray-300 rounded-md p-2 text-sm"
-              />
-            )}
+            {renderInput(question)}
           </div>
         ))}
       </div>

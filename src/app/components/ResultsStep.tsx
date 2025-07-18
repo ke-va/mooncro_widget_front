@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
+import { FormAnswers } from '../types/form';
 
 interface ResultsStepProps {
   title: string;
+  answers: FormAnswers;
 }
 
 const fade = {
@@ -10,7 +12,7 @@ const fade = {
   exit: { opacity: 0 },
 };
 
-export function ResultsStep({ title }: ResultsStepProps) {
+export function ResultsStep({ title, answers }: ResultsStepProps) {
   return (
     <motion.div
       variants={fade}
@@ -29,7 +31,7 @@ export function ResultsStep({ title }: ResultsStepProps) {
           </div>
         </div>
 
-        <h3 className="text-xl font-bold mt-4">Acme Inc</h3>
+        <h3 className="text-xl font-bold mt-4">Company Summary</h3>
 
         <button className="w-full bg-blue-900 text-white py-2 rounded-md hover:bg-blue-800">
           Download Report
@@ -39,15 +41,16 @@ export function ResultsStep({ title }: ResultsStepProps) {
 
         <div className="space-y-2 text-sm sm:text-base">
           <h4 className="font-semibold">Summary</h4>
-          <p><span className="font-semibold">Short description:</span> A platform for managing enterprise projects.</p>
-          <p><span className="font-semibold">Market size:</span> Targeting a market worth $10B annually.</p>
-          <p><span className="font-semibold">Traction:</span> Generating $5M in ARR with over 1,000 customers.</p>
+          <p><span className="font-semibold">Short description:</span> {answers.short_description}</p>
+          <p><span className="font-semibold">Market size:</span> {answers.market_size}</p>
+          <p><span className="font-semibold">Traction:</span> {answers.traction}</p>
+          <p><span className="font-semibold">Selected industries:</span> {answers.industries.join(', ')}</p>
         </div>
 
         <hr />
 
         <div className="space-y-2">
-          <button className="text-blue-700 font-medium hover:underline">View Responses</button>
+          <button className="text-blue-700 font-medium hover:underline">View All Responses</button>
           <button className="text-blue-700 font-medium hover:underline">Give Feedback</button>
         </div>
       </div>

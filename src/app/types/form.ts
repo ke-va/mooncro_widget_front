@@ -12,6 +12,25 @@ export interface QuestionSection {
   questions: Question[];
 }
 
+export interface FormAnswers {
+  // General questions
+  short_description: string;
+  vision: string;
+  market_size: string;
+  pain_point_usp: string;
+  traction: string;
+  team: string;
+  previous_investments: string;
+  ask_valuation: string;
+  use_of_proceeds: string;
+  exit_potential: string;
+  pitch_deck: File | null;
+  industries: string[];
+  
+  // Industry specific answers will be dynamic
+  [key: string]: string | string[] | File | null;
+}
+
 export type FormData = {
   short_description: string;
   vision: string;
