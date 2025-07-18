@@ -96,4 +96,4 @@ export const industryOptions = [
   'Mobility',
   'GovTech',
   'Web3 / Blockchain'
-]; 
+];
