@@ -93,9 +93,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
       yPos += 5;
       
       // Startup details
-      const startupName = answers.short_description ? 
-        answers.short_description.split(' ').slice(0, 3).join(' ') + ' Startup' : 
-        '[Startup Name]';
+      const startupName = answers.startup_name || '[Startup Name]';
       yPos = addText(`Startup Name: ${startupName}`, yPos, 12);
       yPos = addText(`Date: ${currentDate}`, yPos, 12);
       yPos = addText(`Industry: ${answers.industries.length > 0 ? answers.industries[0] : 'Not specified'}`, yPos, 12);
@@ -284,7 +282,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
       console.log('PDF content added successfully');
 
       // Save the PDF
-      const fileName = `MoonCro_Investment_Report_${currentDate.replace(/\//g, '-')}.pdf`;
+      const fileName = `MoonCro_Investment_Report_${answers.startup_name || 'Startup'}_${currentDate.replace(/\//g, '-')}.pdf`;
       console.log('Saving PDF with filename:', fileName);
       
       doc.save(fileName);
@@ -314,7 +312,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
           </div>
         </div>
 
-        <h3 className="text-xl font-bold mt-4">Company Summary</h3>
+        <h3 className="text-xl font-bold mt-4">{answers.startup_name || 'Company Summary'}</h3>
 
         <button 
           onClick={generatePDF}
@@ -327,6 +325,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
 
         <div className="space-y-2 text-sm sm:text-base">
           <h4 className="font-semibold">Summary</h4>
+          <p><span className="font-semibold">Startup name:</span> {answers.startup_name || 'Not provided'}</p>
           <p><span className="font-semibold">Short description:</span> {answers.short_description}</p>
           <p><span className="font-semibold">Market size:</span> {answers.market_size}</p>
           <p><span className="font-semibold">Traction:</span> {answers.traction}</p>

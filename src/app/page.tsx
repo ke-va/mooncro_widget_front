@@ -12,6 +12,7 @@ import { getQuestionsForIndustries } from "./data/industry-questions";
 export default function MoonCroMultiStepForm() {
   const [step, setStep] = useState(1);
   const [formAnswers, setFormAnswers] = useState<FormAnswers>({
+    startup_name: "",
     short_description: "",
     vision: "",
     market_size: "",

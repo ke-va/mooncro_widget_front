@@ -3,81 +3,88 @@ import { Question } from '../types/form';
 // General Questions
 export const generalQuestions: Question[] = [
   {
+    id: 'startup_name',
+    text: 'What is your startup name?',
+    required: true,
+    type: 'text',
+    number: 1
+  },
+  {
     id: 'short_description',
     text: 'In one sentence, describe what your company does.',
     required: true,
     type: 'textarea',
-    number: 1
+    number: 2
   },
   {
     id: 'vision',
     text: 'What is your plan to succeed and differentiate your company in the market?',
     required: true,
     type: 'textarea',
-    number: 2
+    number: 3
   },
   {
     id: 'market_size',
     text: 'How large is the market you are targeting? Please include any relevant data or estimates.',
     required: true,
     type: 'textarea',
-    number: 3
+    number: 4
   },
   {
     id: 'pain_point_usp',
     text: 'What problem are you solving? Who are your competitors? What makes your solution unique?',
     required: true,
     type: 'textarea',
-    number: 4
+    number: 5
   },
   {
     id: 'traction',
     text: 'Are you currently generating revenue? If yes, describe your business model, recent revenue figures, and your typical customer. If not, please share any progress or milestones.',
     required: true,
     type: 'textarea',
-    number: 5
+    number: 6
   },
   {
     id: 'team',
     text: 'How many people are on your team? Where are you located? Who works full-time and part-time? Why is your team well-positioned to succeed?',
     required: true,
     type: 'textarea',
-    number: 6
+    number: 7
   },
   {
     id: 'previous_investments',
     text: 'Is this your first funding round? If not, describe previous investments, including amounts raised, valuations, timing, and investors.',
     required: true,
     type: 'textarea',
-    number: 7
+    number: 8
   },
   {
     id: 'ask_valuation',
     text: 'How much capital are you currently seeking? What valuation are you targeting? Do you have any commitments? When do you plan to close this round?',
     required: true,
     type: 'textarea',
-    number: 8
+    number: 9
   },
   {
     id: 'use_of_proceeds',
     text: 'How will you use the funds you are raising? What milestones or goals will this funding help you achieve?',
     required: true,
     type: 'textarea',
-    number: 9
+    number: 10
   },
   {
     id: 'exit_potential',
     text: 'What is your expected exit strategy? Who do you think might buy your company or how will investors see a return?',
     required: true,
     type: 'textarea',
-    number: 10
+    number: 11
   },
   {
     id: 'pitch_deck',
     text: 'Please upload your latest pitch deck in PDF format.',
     required: true,
     type: 'file',
-    number: 11
+    number: 12
   }
 ];
 

@@ -14,6 +14,7 @@ export interface QuestionSection {
 
 export interface FormAnswers {
   // General questions
+  startup_name: string;
   short_description: string;
   vision: string;
   market_size: string;
@@ -32,6 +33,7 @@ export interface FormAnswers {
 }
 
 export type FormData = {
+  startup_name: string;
   short_description: string;
   vision: string;
   market_size: string;
