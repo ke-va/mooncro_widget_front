@@ -21,70 +21,265 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
       
       const doc = new jsPDF();
       let yPos = 20;
-      const lineHeight = 8;
+      const lineHeight = 6;
       const margin = 20;
       const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
       
       console.log('PDF document initialized');
       
-      // Simple helper to add text
-      const addText = (text: string, y: number, fontSize: number = 12, style: string = 'normal') => {
+      // Helper function to check if we need a new page
+      const checkNewPage = (currentY: number, spaceNeeded: number = 20) => {
+        if (currentY + spaceNeeded > pageHeight - 30) {
+          doc.addPage();
+          return 20;
+        }
+        return currentY;
+      };
+      
+      // Helper to add text with word wrapping
+      const addText = (text: string, y: number, fontSize: number = 10, style: string = 'normal', indent: number = 0) => {
         doc.setFontSize(fontSize);
         doc.setFont('helvetica', style as any);
         
-        // Split long text to fit page width
-        const splitText = doc.splitTextToSize(text, pageWidth - 2 * margin);
-        doc.text(splitText, margin, y);
+        const maxWidth = pageWidth - 2 * margin - indent;
+        const splitText = doc.splitTextToSize(text, maxWidth);
+        
+        y = checkNewPage(y, splitText.length * lineHeight);
+        doc.text(splitText, margin + indent, y);
         
         return y + (splitText.length * lineHeight);
       };
 
-      // Calculate score
+      // Helper to add bullet point
+      const addBullet = (text: string, y: number, fontSize: number = 10) => {
+        y = checkNewPage(y);
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', 'normal');
+        
+        // Add bullet
+        doc.text('•', margin + 5, y);
+        
+        // Add text with proper wrapping
+        const maxWidth = pageWidth - 2 * margin - 15;
+        const splitText = doc.splitTextToSize(text, maxWidth);
+        doc.text(splitText, margin + 15, y);
+        
+        return y + (splitText.length * lineHeight);
+      };
+
+      // Calculate score (same logic as before)
       const calculateScore = () => {
-        let score = 60;
-        if (answers.short_description && answers.short_description.length > 50) score += 5;
-        if (answers.vision && answers.vision.length > 100) score += 5;
-        if (answers.market_size && answers.market_size.includes('billion')) score += 10;
-        if (answers.traction && answers.traction.toLowerCase().includes('revenue')) score += 15;
-        if (answers.industries && answers.industries.length > 0) score += 7;
+        let score = 40; // Base score
+        if (answers.short_description && answers.short_description.length > 50) score += 10;
+        if (answers.vision && answers.vision.length > 100) score += 15;
+        if (answers.market_size && answers.market_size.toLowerCase().includes('billion')) score += 15;
+        if (answers.traction && answers.traction.toLowerCase().includes('revenue')) score += 20;
+        if (answers.industries && answers.industries.length > 0) score += 5;
         return Math.min(score, 100);
       };
 
       const score = calculateScore();
       const rating = score >= 80 ? 'High Potential' : score >= 60 ? 'Promising' : 'Needs Improvement';
       const currentDate = new Date().toLocaleDateString('en-GB');
+      const timestamp = new Date().toLocaleString();
 
       console.log('Score calculated:', score, 'Rating:', rating);
 
-      // Header
-      yPos = addText('MoonCro Investment Report', yPos, 20, 'bold');
-      yPos += 10;
+      // === PAGE 1: HEADER AND EXECUTIVE SUMMARY ===
       
+      // Main Header
+      yPos = addText('MoonCro Investment Report', yPos, 18, 'bold');
+      yPos += 5;
+      
+      // Startup details
+      const startupName = answers.short_description ? 
+        answers.short_description.split(' ').slice(0, 3).join(' ') + ' Startup' : 
+        '[Startup Name]';
+      yPos = addText(`Startup Name: ${startupName}`, yPos, 12);
       yPos = addText(`Date: ${currentDate}`, yPos, 12);
-      yPos = addText(`Score: ${score}/100 (${rating})`, yPos, 12);
-      yPos = addText(`Industries: ${answers.industries.join(', ')}`, yPos, 12);
-      yPos += 10;
+      yPos = addText(`Industry: ${answers.industries.length > 0 ? answers.industries[0] : 'Not specified'}`, yPos, 12);
+      yPos = addText(`Score: ${score} / 100 (${rating})`, yPos, 12, 'bold');
+      
+      yPos += 5;
+      yPos = addText('Powered by MoonCro', yPos, 10, 'italic');
+      yPos += 15;
 
-      // Executive Summary
-      yPos = addText('Executive Summary', yPos, 16, 'bold');
+      // 1. Executive Summary & Recommendation
+      yPos = addText('1. Executive Summary & Recommendation', yPos, 14, 'bold');
       yPos += 5;
       
-      yPos = addText(`Vision: ${answers.vision || 'Not provided'}`, yPos, 12);
-      yPos = addText(`Market Size: ${answers.market_size || 'Not provided'}`, yPos, 12);
-      yPos = addText(`Traction: ${answers.traction || 'Not provided'}`, yPos, 12);
-      yPos += 10;
-
-      // Recommendation
-      yPos = addText('Recommendation', yPos, 16, 'bold');
+      yPos = addBullet(`Vision: ${answers.vision || 'Not provided'}`, yPos);
+      yPos = addBullet(`Market Size: ${answers.market_size || 'Not provided'}`, yPos);
+      yPos = addBullet(`Traction: ${answers.traction || 'Not provided'}`, yPos);
       yPos += 5;
+
+      yPos = addText('Strengths:', yPos, 12, 'bold');
+      yPos += 2;
+      
+      // Generate strengths based on answers
+      const strengths = [];
+      if (answers.vision && answers.vision.length > 100) strengths.push('Clear long-term vision articulated');
+      if (answers.market_size && answers.market_size.toLowerCase().includes('billion')) strengths.push('Large addressable market identified');
+      if (answers.traction && answers.traction.toLowerCase().includes('revenue')) strengths.push('Evidence of revenue traction');
+      if (answers.industries && answers.industries.length > 1) strengths.push('Multi-industry approach');
+      
+      if (strengths.length === 0) strengths.push('Basic business concept established');
+      
+      for (const strength of strengths) {
+        yPos = addBullet(strength, yPos);
+      }
+      yPos += 3;
+
+      yPos = addText('Key Concerns:', yPos, 12, 'bold');
+      yPos += 2;
+      
+      // Generate concerns based on answers
+      const concerns = [];
+      if (!answers.traction || answers.traction.length < 20) concerns.push('Limited traction details provided');
+      if (!answers.market_size || answers.market_size.length < 30) concerns.push('Market size analysis needs more detail');
+      if (!answers.vision || answers.vision.length < 50) concerns.push('Strategic vision requires more depth');
+      if (!answers.short_description || answers.short_description.length < 30) concerns.push('Business description lacks detail');
+      
+      if (concerns.length === 0) concerns.push('Minor areas for improvement identified');
+      
+      for (const concern of concerns) {
+        yPos = addBullet(concern, yPos);
+      }
+      yPos += 5;
+
+      yPos = addText('Recommendation:', yPos, 12, 'bold');
+      yPos += 2;
       
       const recommendation = score >= 80 ? 
-        'Invite to pitch - High potential startup' :
+        'Ready for investment consideration - High potential startup with strong fundamentals' :
         score >= 60 ? 
-        'Monitor progress - Promising but needs improvement' :
-        'Decline - Significant concerns need addressing';
+        'Monitor progress - Promising but needs refinement in key areas' :
+        'Needs Improvement - Significant gaps to address before investment readiness';
       
-      yPos = addText(recommendation, yPos, 12);
+      yPos = addBullet(recommendation, yPos);
+      yPos += 10;
+
+      // 2. Scoring Methodology
+      yPos = checkNewPage(yPos, 60);
+      yPos = addText('2. Scoring Methodology', yPos, 14, 'bold');
+      yPos += 5;
+      
+      yPos = addBullet('Vision & Strategy (20%): Quality and clarity of long-term vision', yPos);
+      yPos = addBullet('Market Size (20%): Total addressable market potential', yPos);
+      yPos = addBullet('Traction (25%): Evidence of customer validation and growth', yPos);
+      yPos = addBullet('Team (15%): Founder and team experience', yPos);
+      yPos = addBullet('Business Model (10%): Revenue model clarity', yPos);
+      yPos = addBullet('Competitive Advantage (10%): Unique value proposition', yPos);
+      yPos += 5;
+
+      yPos = addText('Score Bands:', yPos, 12, 'bold');
+      yPos += 2;
+      yPos = addBullet('High Potential (80-100): Ready for investment consideration', yPos);
+      yPos = addBullet('Promising (60-79): Shows potential but needs refinement', yPos);
+      yPos = addBullet('Needs Improvement (0-59): Significant gaps to address', yPos);
+
+      // === PAGE 2: DETAILED ANALYSIS ===
+      doc.addPage();
+      yPos = 20;
+
+      yPos = addText('3. Detailed Questionnaire Breakdown & Analysis', yPos, 14, 'bold');
+      yPos += 10;
+
+      // Short Description Analysis
+      yPos = addText('Short Description', yPos, 12, 'bold');
+      yPos += 3;
+      yPos = addText(`Response: ${answers.short_description || 'Not provided'}`, yPos, 10);
+      yPos += 2;
+      const descAnalysis = !answers.short_description || answers.short_description.length < 30 ? 
+        'Description could be more detailed and specific' : 
+        'Good foundational description provided';
+      yPos = addText(`Analysis: ${descAnalysis}`, yPos, 10, 'italic');
+      yPos += 8;
+
+      // Vision & Strategy Analysis
+      yPos = addText('Vision & Strategy', yPos, 12, 'bold');
+      yPos += 3;
+      yPos = addText(`Response: ${answers.vision || 'Not provided'}`, yPos, 10);
+      yPos += 2;
+      const visionAnalysis = !answers.vision || answers.vision.length < 50 ? 
+        'Vision needs more strategic depth and clarity' : 
+        'Clear strategic vision articulated';
+      yPos = addText(`Analysis: ${visionAnalysis}`, yPos, 10, 'italic');
+      yPos += 8;
+
+      // Market Size Analysis
+      yPos = addText('Market Size', yPos, 12, 'bold');
+      yPos += 3;
+      yPos = addText(`Response: ${answers.market_size || 'Not provided'}`, yPos, 10);
+      yPos += 2;
+      const marketAnalysis = !answers.market_size || answers.market_size.length < 30 ? 
+        'Market size analysis could be more specific with data' : 
+        'Solid market opportunity identified';
+      yPos = addText(`Analysis: ${marketAnalysis}`, yPos, 10, 'italic');
+      yPos += 8;
+
+      // Traction Analysis
+      yPos = addText('Traction', yPos, 12, 'bold');
+      yPos += 3;
+      yPos = addText(`Response: ${answers.traction || 'Not provided'}`, yPos, 10);
+      yPos += 2;
+      const tractionAnalysis = !answers.traction || answers.traction.length < 20 ? 
+        'Traction metrics could be more quantified and detailed' : 
+        'Good evidence of market validation';
+      yPos = addText(`Analysis: ${tractionAnalysis}`, yPos, 10, 'italic');
+      yPos += 10;
+
+      // 4. Red Flags & Points of Improvement
+      yPos = checkNewPage(yPos, 40);
+      yPos = addText('4. Red Flags & Points of Improvement', yPos, 14, 'bold');
+      yPos += 5;
+
+      yPos = addText('Red Flags:', yPos, 12, 'bold');
+      yPos += 2;
+      
+      const redFlags = [];
+      if (!answers.traction || answers.traction.length < 20) redFlags.push('Limited traction data provided');
+      if (!answers.vision || answers.vision.length < 50) redFlags.push('Unclear strategic vision');
+      if (!answers.market_size || answers.market_size.length < 30) redFlags.push('Insufficient market analysis');
+      
+      if (redFlags.length === 0) redFlags.push('No major red flags identified');
+      
+      for (const flag of redFlags) {
+        yPos = addBullet(flag, yPos);
+      }
+      yPos += 5;
+
+      yPos = addText('Points of Improvement:', yPos, 12, 'bold');
+      yPos += 2;
+      yPos = addBullet('Provide more detailed financial projections', yPos);
+      yPos = addBullet('Strengthen competitive analysis', yPos);
+      yPos = addBullet('Include specific KPIs and metrics', yPos);
+      yPos = addBullet('Clarify go-to-market strategy', yPos);
+      yPos += 10;
+
+      // 5. Summary Recommendations for VC Firm
+      yPos = checkNewPage(yPos, 30);
+      yPos = addText('5. Summary Recommendations for VC Firm', yPos, 14, 'bold');
+      yPos += 5;
+
+      yPos = addText('Suggested Due Diligence Focus Areas:', yPos, 12, 'bold');
+      yPos += 2;
+      yPos = addBullet('Financial model validation and projections', yPos);
+      yPos = addBullet('Market size and competitive landscape verification', yPos);
+      yPos = addBullet('Team background and experience check', yPos);
+      yPos = addBullet('Technology/product validation', yPos);
+
+      // === PAGE 3: APPENDICES ===
+      doc.addPage();
+      yPos = 20;
+
+      yPos = addText('6. Appendices', yPos, 14, 'bold');
+      yPos += 10;
+      
+      yPos = addBullet('Link to full questionnaire responses: [Available in platform]', yPos);
+      yPos = addBullet('Contact info: support@mooncro.com', yPos);
+      yPos = addBullet(`Generated on: ${timestamp}`, yPos);
 
       console.log('PDF content added successfully');
 
