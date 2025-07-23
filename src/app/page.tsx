@@ -1,10 +1,11 @@
+// src/app/page.tsx - Updated to use EnhancedResultsStep
 "use client";
 import React, { useState, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { FormStep } from "./components/FormStep";
 import { IndustrySelection } from "./components/IndustrySelection";
 import { CompletionStep } from "./components/CompletionStep";
-import { ResultsStep } from "./components/ResultsStep";
+import { EnhancedResultsStep } from "./components/EnhancedResultsStep"; // Updated import
 import { FormAnswers } from "./types/form";
 import { generalQuestions } from "./data/questions";
 import { getQuestionsForIndustries } from "./data/industry-questions";
@@ -62,6 +63,7 @@ export default function MoonCroMultiStepForm() {
     const formattedAnswers = {
       // General Questions
       generalAnswers: {
+        'Startup Name': formAnswers.startup_name,
         'Short Description': formAnswers.short_description,
         'Vision': formAnswers.vision,
         'Market Size': formAnswers.market_size,
@@ -92,13 +94,26 @@ export default function MoonCroMultiStepForm() {
       }, {} as Record<string, Record<string, string>>)
     };
 
-    console.group('Form Submission');
-    console.log('General Answers:', formattedAnswers.generalAnswers);
-    console.log('Selected Industries:', formattedAnswers.selectedIndustries);
-    console.log('Industry-Specific Answers:', formattedAnswers.industryAnswers);
+    console.group('🌙 MoonCro Form Submission');
+    console.log('✅ General Answers:', formattedAnswers.generalAnswers);
+    console.log('🏭 Selected Industries:', formattedAnswers.selectedIndustries);
+    console.log('📊 Industry-Specific Answers:', formattedAnswers.industryAnswers);
+    console.log('📈 Calculated Score Preview:', calculatePreviewScore());
     console.groupEnd();
 
     nextStep();
+  };
+
+  // Preview score calculation for development purposes
+  const calculatePreviewScore = () => {
+    let score = 30;
+    if (formAnswers.short_description && formAnswers.short_description.length > 50) score += 8;
+    if (formAnswers.vision && formAnswers.vision.length > 100) score += 12;
+    if (formAnswers.market_size && formAnswers.market_size.toLowerCase().includes('billion')) score += 15;
+    if (formAnswers.traction && formAnswers.traction.toLowerCase().includes('revenue')) score += 15;
+    if (formAnswers.team && formAnswers.team.length > 100) score += 10;
+    if (formAnswers.industries && formAnswers.industries.length > 1) score += 5;
+    return Math.min(score, 100);
   };
 
   const getStepTitle = (currentStep: number): string => {
@@ -112,7 +127,7 @@ export default function MoonCroMultiStepForm() {
     } else if (currentStep === 5 + formAnswers.industries.length) {
       return "";
     } else {
-      return "Results";
+      return "Analysis Results";
     }
   };
 
@@ -130,6 +145,11 @@ export default function MoonCroMultiStepForm() {
           <div className="flex items-center space-x-2">
             <div className="text-2xl">🌘</div>
             <span className="text-lg font-bold">MoonCro</span>
+          </div>
+          
+          {/* Progress indicator */}
+          <div className="text-xs text-gray-500">
+            Step {Math.min(step, 5 + formAnswers.industries.length + 1)} of {5 + formAnswers.industries.length + 1}
           </div>
         </div>
 
@@ -186,7 +206,7 @@ export default function MoonCroMultiStepForm() {
           )}
 
           {step === 5 + formAnswers.industries.length + 1 && (
-            <ResultsStep 
+            <EnhancedResultsStep 
               title={getStepTitle(step)}
               answers={formAnswers}
             />
@@ -198,7 +218,7 @@ export default function MoonCroMultiStepForm() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="px-4 py-2 bg-gray-300 text-sm rounded-md hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-sm rounded-md hover:bg-gray-400 transition-colors"
               >
                 Back
               </button>
@@ -208,7 +228,7 @@ export default function MoonCroMultiStepForm() {
                 type="button"
                 onClick={nextStep}
                 disabled={!isCurrentStepValid}
-                className={`${step > 1 ? '' : 'ml-auto'} px-4 py-2 bg-blue-900 text-white text-sm rounded-md hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`${step > 1 ? '' : 'ml-auto'} px-4 py-2 bg-blue-900 text-white text-sm rounded-md hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
               >
                 Next
               </button>
