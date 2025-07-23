@@ -14,7 +14,7 @@ const fade = {
 };
 
 export function ResultsStep({ title, answers }: ResultsStepProps) {
-  const generatePDF = () => {
+  const generatePDFFile = () => {
     try {
       console.log('Starting PDF generation...');
       console.log('Answers received:', answers);
@@ -68,14 +68,38 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
         return y + (splitText.length * lineHeight);
       };
 
-      // Calculate score (same logic as before)
+      // Calculate score (enhanced logic)
       const calculateScore = () => {
-        let score = 40; // Base score
-        if (answers.short_description && answers.short_description.length > 50) score += 10;
-        if (answers.vision && answers.vision.length > 100) score += 15;
-        if (answers.market_size && answers.market_size.toLowerCase().includes('billion')) score += 15;
-        if (answers.traction && answers.traction.toLowerCase().includes('revenue')) score += 20;
-        if (answers.industries && answers.industries.length > 0) score += 5;
+        let score = 30; // Base score
+        
+        // Short description scoring
+        if (answers.short_description && answers.short_description.length > 50) score += 8;
+        else if (answers.short_description && answers.short_description.length > 20) score += 5;
+        
+        // Vision scoring
+        if (answers.vision && answers.vision.length > 100) score += 12;
+        else if (answers.vision && answers.vision.length > 50) score += 8;
+        
+        // Market size scoring
+        if (answers.market_size) {
+          if (answers.market_size.toLowerCase().includes('billion')) score += 15;
+          else if (answers.market_size.toLowerCase().includes('million')) score += 10;
+          else if (answers.market_size.length > 50) score += 8;
+        }
+        
+        // Traction scoring
+        if (answers.traction) {
+          if (answers.traction.toLowerCase().includes('revenue')) score += 15;
+          else if (answers.traction.toLowerCase().includes('customers')) score += 10;
+          else if (answers.traction.length > 50) score += 8;
+        }
+        
+        // Team scoring
+        if (answers.team && answers.team.length > 100) score += 10;
+        
+        // Industry diversity bonus
+        if (answers.industries && answers.industries.length > 1) score += 5;
+        
         return Math.min(score, 100);
       };
 
@@ -86,207 +110,181 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
 
       console.log('Score calculated:', score, 'Rating:', rating);
 
-      // === PAGE 1: HEADER AND EXECUTIVE SUMMARY ===
+      // === ENHANCED PDF GENERATION ===
       
-      // Main Header
-      yPos = addText('MoonCro Investment Report', yPos, 18, 'bold');
-      yPos += 5;
+      // Main Header with MoonCro branding
+      yPos = addText('MoonCro Investment Analysis Report', yPos, 2, 'bold');
+      yPos += 8;
       
       // Startup details
       const startupName = answers.startup_name || '[Startup Name]';
-      yPos = addText(`Startup Name: ${startupName}`, yPos, 12);
-      yPos = addText(`Date: ${currentDate}`, yPos, 12);
-      yPos = addText(`Industry: ${answers.industries.length > 0 ? answers.industries[0] : 'Not specified'}`, yPos, 12);
-      yPos = addText(`Score: ${score} / 100 (${rating})`, yPos, 12, 'bold');
+      yPos = addText(`Startup Name: ${startupName}`, yPos, 14, 'bold');
+      yPos = addText(`Analysis Date: ${currentDate}`, yPos, 12);
+      yPos = addText(`Industry Focus: ${answers.industries.length > 0 ? answers.industries.join(', ') : 'Not specified'}`, yPos, 12);
       
+      // Score badge
       yPos += 5;
-      yPos = addText('Powered by MoonCro', yPos, 10, 'italic');
+      doc.setFillColor(score >= 80 ? 34 : score >= 60 ? 255 : 220, score >= 80 ? 197 : score >= 60 ? 193 : 53, score >= 80 ? 94 : score >= 60 ? 7 : 69);
+      doc.roundedRect(margin, yPos - 3, 60, 12, 3, 3, 'F');
+      doc.setTextColor(255, 255, 255);
+      yPos = addText(`SCORE: ${score}/100`, yPos, 12, 'bold');
+      doc.setTextColor(0, 0, 0);
+      yPos += 3;
+      yPos = addText(`Rating: ${rating}`, yPos, 12, 'bold');
+      
+      yPos += 10;
+      yPos = addText('Powered by MoonCro AI Assessment Platform', yPos, 10, 'italic');
       yPos += 15;
 
       // 1. Executive Summary & Recommendation
-      yPos = addText('1. Executive Summary & Recommendation', yPos, 14, 'bold');
-      yPos += 5;
+      yPos = addText('1. EXECUTIVE SUMMARY & INVESTMENT RECOMMENDATION', yPos, 16, 'bold');
+      yPos += 8;
       
-      yPos = addBullet(`Vision: ${answers.vision || 'Not provided'}`, yPos);
-      yPos = addBullet(`Market Size: ${answers.market_size || 'Not provided'}`, yPos);
-      yPos = addBullet(`Traction: ${answers.traction || 'Not provided'}`, yPos);
+      // Company Overview
+      yPos = addText('Company Overview:', yPos, 12, 'bold');
+      yPos += 2;
+      yPos = addBullet(`Business: ${answers.short_description || 'Not provided'}`, yPos);
+      yPos = addBullet(`Vision: ${answers.vision ? answers.vision.substring(0, 200) + (answers.vision.length > 200 ? '...' : '') : 'Not provided'}`, yPos);
+      yPos = addBullet(`Market: ${answers.market_size ? answers.market_size.substring(0, 150) + (answers.market_size.length > 150 ? '...' : '') : 'Not provided'}`, yPos);
       yPos += 5;
 
-      yPos = addText('Strengths:', yPos, 12, 'bold');
+      // Strengths Analysis
+      yPos = addText('Key Strengths Identified:', yPos, 12, 'bold');
       yPos += 2;
       
-      // Generate strengths based on answers
       const strengths = [];
-      if (answers.vision && answers.vision.length > 100) strengths.push('Clear long-term vision articulated');
-      if (answers.market_size && answers.market_size.toLowerCase().includes('billion')) strengths.push('Large addressable market identified');
-      if (answers.traction && answers.traction.toLowerCase().includes('revenue')) strengths.push('Evidence of revenue traction');
-      if (answers.industries && answers.industries.length > 1) strengths.push('Multi-industry approach');
+      if (answers.vision && answers.vision.length > 100) strengths.push('Well-articulated strategic vision and market approach');
+      if (answers.market_size && answers.market_size.toLowerCase().includes('billion')) strengths.push('Large total addressable market (TAM) identified');
+      if (answers.traction && answers.traction.toLowerCase().includes('revenue')) strengths.push('Revenue generation and customer traction demonstrated');
+      if (answers.team && answers.team.length > 100) strengths.push('Detailed team composition and capability overview');
+      if (answers.industries && answers.industries.length > 1) strengths.push('Cross-industry applicability and market diversification');
+      if (answers.ask_valuation && answers.ask_valuation.length > 50) strengths.push('Clear funding requirements and valuation framework');
       
-      if (strengths.length === 0) strengths.push('Basic business concept established');
+      if (strengths.length === 0) strengths.push('Foundational business concept established with room for development');
       
-      for (const strength of strengths) {
+      for (const strength of strengths.slice(0, 5)) {
         yPos = addBullet(strength, yPos);
       }
-      yPos += 3;
-
-      yPos = addText('Key Concerns:', yPos, 12, 'bold');
-      yPos += 2;
-      
-      // Generate concerns based on answers
-      const concerns = [];
-      if (!answers.traction || answers.traction.length < 20) concerns.push('Limited traction details provided');
-      if (!answers.market_size || answers.market_size.length < 30) concerns.push('Market size analysis needs more detail');
-      if (!answers.vision || answers.vision.length < 50) concerns.push('Strategic vision requires more depth');
-      if (!answers.short_description || answers.short_description.length < 30) concerns.push('Business description lacks detail');
-      
-      if (concerns.length === 0) concerns.push('Minor areas for improvement identified');
-      
-      for (const concern of concerns) {
-        yPos = addBullet(concern, yPos);
-      }
       yPos += 5;
 
-      yPos = addText('Recommendation:', yPos, 12, 'bold');
+      // Investment Recommendation
+      yPos = addText('Investment Recommendation:', yPos, 12, 'bold');
       yPos += 2;
       
       const recommendation = score >= 80 ? 
-        'Ready for investment consideration - High potential startup with strong fundamentals' :
+        '✅ RECOMMEND FOR INVESTMENT: High-potential startup demonstrating strong fundamentals across key evaluation criteria. Proceed with due diligence and term sheet preparation.' :
         score >= 60 ? 
-        'Monitor progress - Promising but needs refinement in key areas' :
-        'Needs Improvement - Significant gaps to address before investment readiness';
+        '⚠️ CONDITIONAL INTEREST: Promising opportunity with solid foundation but requires addressing specific gaps before investment decision. Schedule follow-up meeting and request additional documentation.' :
+        '❌ PASS AT THIS TIME: Significant development needed across multiple areas before investment readiness. Maintain relationship for future monitoring and re-evaluation in 6-12 months.';
       
       yPos = addBullet(recommendation, yPos);
       yPos += 10;
 
-      // 2. Scoring Methodology
-      yPos = checkNewPage(yPos, 60);
-      yPos = addText('2. Scoring Methodology', yPos, 14, 'bold');
-      yPos += 5;
-      
-      yPos = addBullet('Vision & Strategy (20%): Quality and clarity of long-term vision', yPos);
-      yPos = addBullet('Market Size (20%): Total addressable market potential', yPos);
-      yPos = addBullet('Traction (25%): Evidence of customer validation and growth', yPos);
-      yPos = addBullet('Team (15%): Founder and team experience', yPos);
-      yPos = addBullet('Business Model (10%): Revenue model clarity', yPos);
-      yPos = addBullet('Competitive Advantage (10%): Unique value proposition', yPos);
-      yPos += 5;
+      // 2. Detailed Analysis Breakdown
+      yPos = checkNewPage(yPos, 40);
+      yPos = addText('2. DETAILED ANALYSIS BREAKDOWN', yPos, 16, 'bold');
+      yPos += 8;
 
-      yPos = addText('Score Bands:', yPos, 12, 'bold');
-      yPos += 2;
-      yPos = addBullet('High Potential (80-100): Ready for investment consideration', yPos);
-      yPos = addBullet('Promising (60-79): Shows potential but needs refinement', yPos);
-      yPos = addBullet('Needs Improvement (0-59): Significant gaps to address', yPos);
+      // Market Analysis
+      yPos = addText('Market Opportunity Analysis:', yPos, 14, 'bold');
+      yPos += 3;
+      yPos = addText(`Market Size Assessment: ${answers.market_size || 'Not provided'}`, yPos, 10);
+      yPos += 3;
+      const marketScore = answers.market_size && answers.market_size.toLowerCase().includes('billion') ? 'Strong' : 
+                         answers.market_size && answers.market_size.length > 50 ? 'Moderate' : 'Weak';
+      yPos = addText(`Assessment: ${marketScore} - ${marketScore === 'Strong' ? 'Large addressable market with quantified opportunity' : 
+                     marketScore === 'Moderate' ? 'Market opportunity identified but needs more specificity' : 
+                     'Market analysis lacks detail and quantification'}`, yPos, 10, 'italic');
+      yPos += 8;
 
-      // === PAGE 2: DETAILED ANALYSIS ===
+      // Traction Analysis  
+      yPos = addText('Traction & Business Model:', yPos, 14, 'bold');
+      yPos += 3;
+      yPos = addText(`Current Status: ${answers.traction || 'Not provided'}`, yPos, 10);
+      yPos += 3;
+      const tractionScore = answers.traction && answers.traction.toLowerCase().includes('revenue') ? 'Strong' : 
+                           answers.traction && answers.traction.length > 50 ? 'Moderate' : 'Weak';
+      yPos = addText(`Assessment: ${tractionScore} - ${tractionScore === 'Strong' ? 'Revenue-generating with clear business model' : 
+                     tractionScore === 'Moderate' ? 'Some progress demonstrated but needs quantification' : 
+                     'Limited evidence of market validation and traction'}`, yPos, 10, 'italic');
+      yPos += 8;
+
+      // Team Analysis
+      yPos = addText('Team & Execution Capability:', yPos, 14, 'bold');
+      yPos += 3;
+      yPos = addText(`Team Overview: ${answers.team ? answers.team.substring(0, 200) + (answers.team.length > 200 ? '...' : '') : 'Not provided'}`, yPos, 10);
+      yPos += 3;
+      const teamScore = answers.team && answers.team.length > 100 ? 'Strong' : 
+                       answers.team && answers.team.length > 50 ? 'Moderate' : 'Weak';
+      yPos = addText(`Assessment: ${teamScore} - ${teamScore === 'Strong' ? 'Comprehensive team overview with clear roles and experience' : 
+                     teamScore === 'Moderate' ? 'Basic team information provided' : 
+                     'Team composition and experience needs more detail'}`, yPos, 10, 'italic');
+
+      // Continue with more sections...
       doc.addPage();
       yPos = 20;
 
-      yPos = addText('3. Detailed Questionnaire Breakdown & Analysis', yPos, 14, 'bold');
-      yPos += 10;
-
-      // Short Description Analysis
-      yPos = addText('Short Description', yPos, 12, 'bold');
-      yPos += 3;
-      yPos = addText(`Response: ${answers.short_description || 'Not provided'}`, yPos, 10);
-      yPos += 2;
-      const descAnalysis = !answers.short_description || answers.short_description.length < 30 ? 
-        'Description could be more detailed and specific' : 
-        'Good foundational description provided';
-      yPos = addText(`Analysis: ${descAnalysis}`, yPos, 10, 'italic');
+      // 3. Risk Assessment & Red Flags
+      yPos = addText('3. RISK ASSESSMENT & RED FLAGS', yPos, 16, 'bold');
       yPos += 8;
 
-      // Vision & Strategy Analysis
-      yPos = addText('Vision & Strategy', yPos, 12, 'bold');
-      yPos += 3;
-      yPos = addText(`Response: ${answers.vision || 'Not provided'}`, yPos, 10);
-      yPos += 2;
-      const visionAnalysis = !answers.vision || answers.vision.length < 50 ? 
-        'Vision needs more strategic depth and clarity' : 
-        'Clear strategic vision articulated';
-      yPos = addText(`Analysis: ${visionAnalysis}`, yPos, 10, 'italic');
-      yPos += 8;
-
-      // Market Size Analysis
-      yPos = addText('Market Size', yPos, 12, 'bold');
-      yPos += 3;
-      yPos = addText(`Response: ${answers.market_size || 'Not provided'}`, yPos, 10);
-      yPos += 2;
-      const marketAnalysis = !answers.market_size || answers.market_size.length < 30 ? 
-        'Market size analysis could be more specific with data' : 
-        'Solid market opportunity identified';
-      yPos = addText(`Analysis: ${marketAnalysis}`, yPos, 10, 'italic');
-      yPos += 8;
-
-      // Traction Analysis
-      yPos = addText('Traction', yPos, 12, 'bold');
-      yPos += 3;
-      yPos = addText(`Response: ${answers.traction || 'Not provided'}`, yPos, 10);
-      yPos += 2;
-      const tractionAnalysis = !answers.traction || answers.traction.length < 20 ? 
-        'Traction metrics could be more quantified and detailed' : 
-        'Good evidence of market validation';
-      yPos = addText(`Analysis: ${tractionAnalysis}`, yPos, 10, 'italic');
-      yPos += 10;
-
-      // 4. Red Flags & Points of Improvement
-      yPos = checkNewPage(yPos, 40);
-      yPos = addText('4. Red Flags & Points of Improvement', yPos, 14, 'bold');
-      yPos += 5;
-
-      yPos = addText('Red Flags:', yPos, 12, 'bold');
+      yPos = addText('Identified Risk Factors:', yPos, 12, 'bold');
       yPos += 2;
       
       const redFlags = [];
-      if (!answers.traction || answers.traction.length < 20) redFlags.push('Limited traction data provided');
-      if (!answers.vision || answers.vision.length < 50) redFlags.push('Unclear strategic vision');
-      if (!answers.market_size || answers.market_size.length < 30) redFlags.push('Insufficient market analysis');
+      if (!answers.traction || answers.traction.length < 50) redFlags.push('Limited quantified traction metrics and customer validation data');
+      if (!answers.market_size || answers.market_size.length < 50) redFlags.push('Insufficient market size analysis and competitive landscape assessment');
+      if (!answers.team || answers.team.length < 50) redFlags.push('Incomplete team information and experience backgrounds');
+      if (!answers.ask_valuation || answers.ask_valuation.length < 30) {
+        redFlags.push('Unclear funding requirements and valuation methodology');
+      }
+      if (!answers.industries || answers.industries.length < 2) redFlags.push('Limited industry diversification and market applicability');
+      if (!answers.short_description || answers.short_description.length < 50) redFlags.push('Incomplete business concept and market opportunity description');
+      if (!answers.vision || answers.vision.length < 100) redFlags.push('Lack of clear strategic vision and market approach');
       
-      if (redFlags.length === 0) redFlags.push('No major red flags identified');
+      if (redFlags.length === 0) redFlags.push('No significant red flags identified - comprehensive information provided');
       
-      for (const flag of redFlags) {
+      for (const flag of redFlags.slice(0, 7)) {
         yPos = addBullet(flag, yPos);
       }
-      yPos += 5;
-
-      yPos = addText('Points of Improvement:', yPos, 12, 'bold');
-      yPos += 2;
-      yPos = addBullet('Provide more detailed financial projections', yPos);
-      yPos = addBullet('Strengthen competitive analysis', yPos);
-      yPos = addBullet('Include specific KPIs and metrics', yPos);
-      yPos = addBullet('Clarify go-to-market strategy', yPos);
       yPos += 10;
 
-      // 5. Summary Recommendations for VC Firm
-      yPos = checkNewPage(yPos, 30);
-      yPos = addText('5. Summary Recommendations for VC Firm', yPos, 14, 'bold');
-      yPos += 5;
-
-      yPos = addText('Suggested Due Diligence Focus Areas:', yPos, 12, 'bold');
-      yPos += 2;
-      yPos = addBullet('Financial model validation and projections', yPos);
-      yPos = addBullet('Market size and competitive landscape verification', yPos);
-      yPos = addBullet('Team background and experience check', yPos);
-      yPos = addBullet('Technology/product validation', yPos);
-
-      // === PAGE 3: APPENDICES ===
-      doc.addPage();
-      yPos = 20;
-
-      yPos = addText('6. Appendices', yPos, 14, 'bold');
-      yPos += 10;
+      // 4. Next Steps & Recommendations
+      yPos = addText('4. NEXT STEPS & RECOMMENDATIONS', yPos, 16, 'bold');
+      yPos += 8;
       
-      yPos = addBullet('Link to full questionnaire responses: [Available in platform]', yPos);
-      yPos = addBullet('Contact info: support@mooncro.com', yPos);
-      yPos = addBullet(`Generated on: ${timestamp}`, yPos);
+      const nextSteps = score >= 80 ? [
+        'Schedule comprehensive due diligence session',
+        'Request detailed financial projections and unit economics',
+        'Conduct customer reference calls and market validation',
+        'Prepare term sheet for potential investment',
+        'Engage technical advisor for product/technology review'
+      ] : score >= 60 ? [
+        'Request additional documentation addressing identified gaps',
+        'Schedule follow-up presentation with expanded market analysis',
+        'Provide feedback on business plan improvements needed',
+        'Consider pilot program or smaller initial investment',
+        'Re-evaluate after addressing priority concerns'
+      ] : [
+        'Provide comprehensive feedback on areas needing development',
+        'Suggest business plan enhancement and market research',
+        'Recommend accelerator program or mentorship opportunities',
+        'Maintain relationship for future re-evaluation',
+        'Schedule check-in meeting in 6-12 months'
+      ];
+      
+      for (const step of nextSteps) {
+        yPos = addBullet(step, yPos);
+      }
+      yPos += 10;
 
-      console.log('PDF content added successfully');
+      // Footer
+      yPos = addText(`Generated on ${timestamp} by MoonCro Investment Analysis Platform`, yPos, 8, 'italic');
+      yPos = addText('This report is confidential and intended solely for internal investment decision-making.', yPos, 8, 'italic');
 
       // Save the PDF
-      const fileName = `MoonCro_Investment_Report_${answers.startup_name || 'Startup'}_${currentDate.replace(/\//g, '-')}.pdf`;
-      console.log('Saving PDF with filename:', fileName);
-      
-      doc.save(fileName);
-      console.log('PDF saved successfully!');
+      doc.save(`${startupName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_investment_analysis_${new Date().getTime()}.pdf`);
+      console.log('PDF generated successfully');
       
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -315,7 +313,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
         <h3 className="text-xl font-bold mt-4">{answers.startup_name || 'Company Summary'}</h3>
 
         <button 
-          onClick={generatePDF}
+          onClick={generatePDFFile}
           className="w-full bg-blue-900 text-white py-2 rounded-md hover:bg-blue-800 transition-colors"
         >
           Download Detailed Report

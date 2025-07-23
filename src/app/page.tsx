@@ -1,11 +1,11 @@
-// src/app/page.tsx - Updated to use EnhancedResultsStep
+// src/app/page.tsx - Updated to use ResultsStep
 "use client";
 import React, { useState, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { FormStep } from "./components/FormStep";
 import { IndustrySelection } from "./components/IndustrySelection";
 import { CompletionStep } from "./components/CompletionStep";
-import { EnhancedResultsStep } from "./components/EnhancedResultsStep"; // Updated import
+import { ResultsStep } from "./components/ResultsStep"; // Updated import
 import { FormAnswers } from "./types/form";
 import { generalQuestions } from "./data/questions";
 import { getQuestionsForIndustries } from "./data/industry-questions";
@@ -206,7 +206,7 @@ export default function MoonCroMultiStepForm() {
           )}
 
           {step === 5 + formAnswers.industries.length + 1 && (
-            <EnhancedResultsStep 
+            <ResultsStep 
               title={getStepTitle(step)}
               answers={formAnswers}
             />
