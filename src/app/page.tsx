@@ -53,6 +53,25 @@ export default function MoonCroMultiStepForm() {
     }));
   };
 
+  const resetForm = () => {
+    setStep(1);
+    setFormAnswers({
+      startup_name: "",
+      short_description: "",
+      vision: "",
+      market_size: "",
+      pain_point_usp: "",
+      traction: "",
+      team: "",
+      previous_investments: "",
+      ask_valuation: "",
+      use_of_proceeds: "",
+      exit_potential: "",
+      pitch_deck: null,
+      industries: [],
+    });
+  };
+
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 5 + formAnswers.industries.length + 1));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
   
@@ -209,6 +228,7 @@ export default function MoonCroMultiStepForm() {
             <ResultsStep 
               title={getStepTitle(step)}
               answers={formAnswers}
+              onReset={resetForm}
             />
           )}
 

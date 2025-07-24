@@ -5,6 +5,7 @@ import { jsPDF } from 'jspdf';
 interface ResultsStepProps {
   title: string;
   answers: FormAnswers;
+  onReset?: () => void;
 }
 
 const fade = {
@@ -13,7 +14,54 @@ const fade = {
   exit: { opacity: 0 },
 };
 
-export function ResultsStep({ title, answers }: ResultsStepProps) {
+export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
+  // Calculate score (enhanced logic) - shared between display and PDF
+  const calculateScore = () => {
+    let score = 0; // Start from 0
+    
+    // Short description scoring
+    if (answers.short_description && answers.short_description.length > 50) score += 15;
+    else if (answers.short_description && answers.short_description.length > 20) score += 10;
+    else if (answers.short_description && answers.short_description.length > 0) score += 5;
+    
+    // Vision scoring
+    if (answers.vision && answers.vision.length > 100) score += 20;
+    else if (answers.vision && answers.vision.length > 50) score += 15;
+    else if (answers.vision && answers.vision.length > 0) score += 8;
+    
+    // Market size scoring
+    if (answers.market_size) {
+      if (answers.market_size.toLowerCase().includes('billion')) score += 20;
+      else if (answers.market_size.toLowerCase().includes('million')) score += 15;
+      else if (answers.market_size.length > 50) score += 10;
+      else if (answers.market_size.length > 0) score += 5;
+    }
+    
+    // Traction scoring
+    if (answers.traction) {
+      if (answers.traction.toLowerCase().includes('revenue')) score += 20;
+      else if (answers.traction.toLowerCase().includes('customers')) score += 15;
+      else if (answers.traction.length > 50) score += 10;
+      else if (answers.traction.length > 0) score += 5;
+    }
+    
+    // Team scoring
+    if (answers.team && answers.team.length > 100) score += 15;
+    else if (answers.team && answers.team.length > 50) score += 10;
+    else if (answers.team && answers.team.length > 0) score += 5;
+    
+    // Industry diversity bonus
+    if (answers.industries && answers.industries.length > 2) score += 10;
+    else if (answers.industries && answers.industries.length > 1) score += 7;
+    else if (answers.industries && answers.industries.length > 0) score += 3;
+    
+    return Math.min(score, 100);
+  };
+
+  const score = calculateScore();
+  const rating = score >= 80 ? 'High Potential' : score >= 60 ? 'Promising' : 'Needs Improvement';
+  const ratingColor = score >= 80 ? 'bg-green-100 text-green-800' : score >= 60 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+
   const generatePDFFile = () => {
     try {
       console.log('Starting PDF generation...');
@@ -61,50 +109,12 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
         doc.text('•', margin + 5, y);
         
         // Add text with proper wrapping
-        const maxWidth = pageWidth - 2 * margin - 15;
+        const maxWidth = pageWidth - 2 * margin - 20;
         const splitText = doc.splitTextToSize(text, maxWidth);
         doc.text(splitText, margin + 15, y);
         
         return y + (splitText.length * lineHeight);
       };
-
-      // Calculate score (enhanced logic)
-      const calculateScore = () => {
-        let score = 30; // Base score
-        
-        // Short description scoring
-        if (answers.short_description && answers.short_description.length > 50) score += 8;
-        else if (answers.short_description && answers.short_description.length > 20) score += 5;
-        
-        // Vision scoring
-        if (answers.vision && answers.vision.length > 100) score += 12;
-        else if (answers.vision && answers.vision.length > 50) score += 8;
-        
-        // Market size scoring
-        if (answers.market_size) {
-          if (answers.market_size.toLowerCase().includes('billion')) score += 15;
-          else if (answers.market_size.toLowerCase().includes('million')) score += 10;
-          else if (answers.market_size.length > 50) score += 8;
-        }
-        
-        // Traction scoring
-        if (answers.traction) {
-          if (answers.traction.toLowerCase().includes('revenue')) score += 15;
-          else if (answers.traction.toLowerCase().includes('customers')) score += 10;
-          else if (answers.traction.length > 50) score += 8;
-        }
-        
-        // Team scoring
-        if (answers.team && answers.team.length > 100) score += 10;
-        
-        // Industry diversity bonus
-        if (answers.industries && answers.industries.length > 1) score += 5;
-        
-        return Math.min(score, 100);
-      };
-
-      const score = calculateScore();
-      const rating = score >= 80 ? 'High Potential' : score >= 60 ? 'Promising' : 'Needs Improvement';
       const currentDate = new Date().toLocaleDateString('en-GB');
       const timestamp = new Date().toLocaleString();
 
@@ -113,7 +123,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
       // === ENHANCED PDF GENERATION ===
       
       // Main Header with MoonCro branding
-      yPos = addText('MoonCro Investment Analysis Report', yPos, 2, 'bold');
+      yPos = addText('MoonCro Investment Analysis Report', yPos, 10, 'bold');
       yPos += 8;
       
       // Startup details
@@ -123,14 +133,100 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
       yPos = addText(`Industry Focus: ${answers.industries.length > 0 ? answers.industries.join(', ') : 'Not specified'}`, yPos, 12);
       
       // Score badge
-      yPos += 5;
-      doc.setFillColor(score >= 80 ? 34 : score >= 60 ? 255 : 220, score >= 80 ? 197 : score >= 60 ? 193 : 53, score >= 80 ? 94 : score >= 60 ? 7 : 69);
-      doc.roundedRect(margin, yPos - 3, 60, 12, 3, 3, 'F');
-      doc.setTextColor(255, 255, 255);
-      yPos = addText(`SCORE: ${score}/100`, yPos, 12, 'bold');
+      // yPos += 5;
+      // doc.setFillColor(score >= 80 ? 34 : score >= 60 ? 255 : 220, score >= 80 ? 197 : score >= 60 ? 193 : 53, score >= 80 ? 94 : score >= 60 ? 7 : 69);
+      // doc.roundedRect(margin, yPos - 3, 60, 12, 3, 3, 'F');
+      // doc.setTextColor(255, 255, 255);
+      // yPos = addText(`SCORE: ${score}/100`, yPos, 12, 'bold');
+      // doc.setTextColor(0, 0, 0);
+      // yPos += 3;
+      // yPos = addText(`Rating: ${rating}`, yPos, 12, 'bold');
+      // Score badge - Professional design
+      yPos += 8;
+      
+      // Create a more sophisticated score display
+      const badgeWidth = 180;
+      const badgeHeight = 35;
+      const badgeX = margin;
+      const badgeY = yPos;
+      
+      // Gradient effect simulation with multiple rectangles
+      if (score >= 80) {
+        // Green gradient for high scores
+        doc.setFillColor(240, 253, 244); // Light green background
+        doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4, 4, 'F');
+        doc.setDrawColor(34, 197, 94); // Green border
+        doc.setLineWidth(0.5);
+        doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4, 4, 'S');
+        
+        // Score section with darker green
+        doc.setFillColor(34, 197, 94);
+        doc.roundedRect(badgeX, badgeY, 65, badgeHeight, 4, 4, 'F');
+        
+        // Add score text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${score}/100`, badgeX + 32, badgeY + 22, { align: 'center' });
+        
+        // Rating text
+        doc.setTextColor(34, 197, 94);
+        doc.setFontSize(14);
+        doc.text(rating.toUpperCase(), badgeX + 120, badgeY + 22, { align: 'center' });
+        
+      } else if (score >= 60) {
+        // Yellow gradient for medium scores
+        doc.setFillColor(254, 252, 232); // Light yellow background
+        doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4, 4, 'F');
+        doc.setDrawColor(250, 204, 21); // Yellow border
+        doc.setLineWidth(0.5);
+        doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4, 4, 'S');
+        
+        // Score section with darker yellow
+        doc.setFillColor(250, 204, 21);
+        doc.roundedRect(badgeX, badgeY, 65, badgeHeight, 4, 4, 'F');
+        
+        // Add score text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${score}/100`, badgeX + 32, badgeY + 22, { align: 'center' });
+        
+        // Rating text
+        doc.setTextColor(161, 98, 7);
+        doc.setFontSize(14);
+        doc.text(rating.toUpperCase(), badgeX + 120, badgeY + 22, { align: 'center' });
+        
+      } else {
+        // Red gradient for low scores
+        doc.setFillColor(254, 242, 242); // Light red background
+        doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4, 4, 'F');
+        doc.setDrawColor(239, 68, 68); // Red border
+        doc.setLineWidth(0.5);
+        doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4, 4, 'S');
+        
+        // Score section with darker red
+        doc.setFillColor(239, 68, 68);
+        doc.roundedRect(badgeX, badgeY, 65, badgeHeight, 4, 4, 'F');
+        
+        // Add score text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${score}/100`, badgeX + 32, badgeY + 22, { align: 'center' });
+        
+        // Rating text
+        doc.setTextColor(185, 28, 28);
+        doc.setFontSize(14);
+        doc.text(rating.toUpperCase(), badgeX + 120, badgeY + 22, { align: 'center' });
+      }
+      
+      // Reset text color
       doc.setTextColor(0, 0, 0);
-      yPos += 3;
-      yPos = addText(`Rating: ${rating}`, yPos, 12, 'bold');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      
+      yPos = badgeY + badgeHeight + 5;
       
       yPos += 10;
       yPos = addText('Powered by MoonCro AI Assessment Platform', yPos, 10, 'italic');
@@ -177,7 +273,7 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
         '⚠️ CONDITIONAL INTEREST: Promising opportunity with solid foundation but requires addressing specific gaps before investment decision. Schedule follow-up meeting and request additional documentation.' :
         '❌ PASS AT THIS TIME: Significant development needed across multiple areas before investment readiness. Maintain relationship for future monitoring and re-evaluation in 6-12 months.';
       
-      yPos = addBullet(recommendation, yPos);
+      yPos = addBullet(recommendation, yPos, 8);
       yPos += 10;
 
       // 2. Detailed Analysis Breakdown
@@ -305,8 +401,8 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">Your MoonCro score:</span>
-            <span className="bg-blue-600 text-white px-3 py-1 text-sm rounded-full">82/100</span>
-            <span className="bg-green-100 text-green-800 text-sm px-2 py-1 rounded">High Potential</span>
+            <span className="bg-blue-600 text-white px-3 py-1 text-sm rounded-full">{score}/100</span>
+            <span className={`text-sm px-2 py-1 rounded ${ratingColor}`}>{rating}</span>
           </div>
         </div>
 
@@ -333,8 +429,22 @@ export function ResultsStep({ title, answers }: ResultsStepProps) {
         <hr />
 
         <div className="space-y-2">
-          <button className="text-blue-700 font-medium hover:underline">View All Responses</button>
-          <button className="text-blue-700 font-medium hover:underline">Give Feedback</button>
+                      <div className="flex space-x-4">
+              <a 
+                href="mailto:hello@mooncro.com?subject=MoonCro%20feedback%20Support"
+                className="text-blue-700 font-medium hover:underline"
+              >
+                Give Feedback
+              </a>
+              {onReset && (
+                <button 
+                  onClick={onReset}
+                  className="text-green-700 font-medium hover:underline"
+                >
+                  Start Over
+                </button>
+              )}
+            </div>
         </div>
       </div>
     </motion.div>
