@@ -749,7 +749,7 @@ Please respond with a JSON object containing:
             {useAI && !apiConfig.apiKey && (
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  ⚠️ Configure your API key above to enable AI-powered scoring. Without it, we'll use basic rule-based scoring.
+                  ⚠️ Configure your API key above to enable AI-powered scoring. Without it, we&apos;ll use basic rule-based scoring.
                 </p>
               </div>
             )}

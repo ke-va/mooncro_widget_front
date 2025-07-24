@@ -1,9 +1,9 @@
-import { Question } from '../types/form';
+import { Question, FormAnswers } from '../types/form';
 import { motion } from 'framer-motion';
 
 interface FormStepProps {
   questions: Question[];
-  formData: any;
+  formData: FormAnswers;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   title: string;
 }
@@ -16,12 +16,18 @@ const fade = {
 
 export function FormStep({ questions, formData, onChange, title }: FormStepProps) {
   const renderInput = (question: Question) => {
+    const getStringValue = (value: string | string[] | File | null): string => {
+      if (typeof value === 'string') return value;
+      if (Array.isArray(value)) return value.join(', ');
+      return '';
+    };
+
     switch (question.type) {
       case 'textarea':
         return (
           <textarea
             name={question.id}
-            value={formData[question.id] || ''}
+            value={getStringValue(formData[question.id]) || ''}
             onChange={onChange}
             placeholder={question.text}
             className="w-full border border-gray-300 rounded-md p-2 text-sm"
@@ -43,7 +49,7 @@ export function FormStep({ questions, formData, onChange, title }: FormStepProps
           <input
             type={question.type}
             name={question.id}
-            value={formData[question.id] || ''}
+            value={getStringValue(formData[question.id]) || ''}
             onChange={onChange}
             placeholder={question.text}
             className="w-full border border-gray-300 rounded-md p-2 text-sm"

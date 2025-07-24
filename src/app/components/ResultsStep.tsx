@@ -86,9 +86,9 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
       };
       
       // Helper to add text with word wrapping
-      const addText = (text: string, y: number, fontSize: number = 10, style: string = 'normal', indent: number = 0) => {
+      const addText = (text: string, y: number, fontSize: number = 10, style: 'normal' | 'bold' | 'italic' | 'bolditalic' = 'normal', indent: number = 0) => {
         doc.setFontSize(fontSize);
-        doc.setFont('helvetica', style as any);
+        doc.setFont('helvetica', style);
         
         const maxWidth = pageWidth - 2 * margin - indent;
         const splitText = doc.splitTextToSize(text, maxWidth);
