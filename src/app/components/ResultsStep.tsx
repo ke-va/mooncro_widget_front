@@ -1,11 +1,26 @@
 import { motion } from 'framer-motion';
 import { FormAnswers } from '../types/form';
 import { jsPDF } from 'jspdf';
+import { useState, useEffect } from 'react';
+import { analyzeStartupWithAI, analyzeStartupFallback } from '../../services/openai-analysis';
 
 interface ResultsStepProps {
   title: string;
   answers: FormAnswers;
   onReset?: () => void;
+}
+
+interface AIAnalysis {
+  score: number;
+  rating: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  marketAnalysis: string;
+  tractionAnalysis: string;
+  teamAnalysis: string;
+  riskFactors: string[];
+  investmentRecommendation: string;
 }
 
 const fade = {
@@ -14,52 +29,460 @@ const fade = {
   exit: { opacity: 0 },
 };
 
-export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
-  // Calculate score (enhanced logic) - shared between display and PDF
-  const calculateScore = () => {
-    let score = 0; // Start from 0
-    
-    // Short description scoring
-    if (answers.short_description && answers.short_description.length > 50) score += 15;
-    else if (answers.short_description && answers.short_description.length > 20) score += 10;
-    else if (answers.short_description && answers.short_description.length > 0) score += 5;
-    
-    // Vision scoring
-    if (answers.vision && answers.vision.length > 100) score += 20;
-    else if (answers.vision && answers.vision.length > 50) score += 15;
-    else if (answers.vision && answers.vision.length > 0) score += 8;
-    
-    // Market size scoring
-    if (answers.market_size) {
-      if (answers.market_size.toLowerCase().includes('billion')) score += 20;
-      else if (answers.market_size.toLowerCase().includes('million')) score += 15;
-      else if (answers.market_size.length > 50) score += 10;
-      else if (answers.market_size.length > 0) score += 5;
-    }
-    
-    // Traction scoring
-    if (answers.traction) {
-      if (answers.traction.toLowerCase().includes('revenue')) score += 20;
-      else if (answers.traction.toLowerCase().includes('customers')) score += 15;
-      else if (answers.traction.length > 50) score += 10;
-      else if (answers.traction.length > 0) score += 5;
-    }
-    
-    // Team scoring
-    if (answers.team && answers.team.length > 100) score += 15;
-    else if (answers.team && answers.team.length > 50) score += 10;
-    else if (answers.team && answers.team.length > 0) score += 5;
-    
-    // Industry diversity bonus
-    if (answers.industries && answers.industries.length > 2) score += 10;
-    else if (answers.industries && answers.industries.length > 1) score += 7;
-    else if (answers.industries && answers.industries.length > 0) score += 3;
-    
-    return Math.min(score, 100);
-  };
+// AI Analysis Engine
+const analyzeStartup = async (answers: FormAnswers): Promise<AIAnalysis> => {
+  try {
+    // Use OpenAI for comprehensive analysis
+    const analysis = await analyzeStartupWithAI(answers);
+    return analysis;
+  } catch (error) {
+    console.error('OpenAI analysis failed, using fallback:', error);
+    // Fallback to basic analysis if OpenAI fails
+    return await analyzeStartupFallback(answers);
+  }
+};
 
-  const score = calculateScore();
-  const rating = score >= 80 ? 'High Potential' : score >= 60 ? 'Promising' : 'Needs Improvement';
+// Legacy analysis function - now used as fallback
+const performLegacyAnalysis = async (answers: FormAnswers): Promise<AIAnalysis> => {
+  // Advanced scoring algorithm with AI insights
+  const marketScore = analyzeMarket(answers);
+  const tractionScore = analyzeTraction(answers);
+  const teamScore = analyzeTeam(answers);
+  const visionScore = analyzeVision(answers);
+  const businessModelScore = analyzeBusinessModel(answers);
+  
+  const totalScore = Math.round((marketScore + tractionScore + teamScore + visionScore + businessModelScore) / 5);
+  
+  const strengths = identifyStrengths(answers);
+  const weaknesses = identifyWeaknesses(answers);
+  const recommendations = generateRecommendations(answers, totalScore);
+  const riskFactors = assessRisks(answers);
+  
+  return {
+    score: totalScore,
+    rating: totalScore >= 80 ? 'High Potential' : totalScore >= 60 ? 'Promising' : 'Needs Improvement',
+    strengths,
+    weaknesses,
+    recommendations,
+    marketAnalysis: generateMarketAnalysis(answers),
+    tractionAnalysis: generateTractionAnalysis(answers),
+    teamAnalysis: generateTeamAnalysis(answers),
+    riskFactors,
+    investmentRecommendation: generateInvestmentRecommendation(answers, totalScore)
+  };
+};
+
+const analyzeMarket = (answers: FormAnswers): number => {
+  let score = 0;
+  const marketSize = answers.market_size?.toLowerCase() || '';
+  
+  // Market size assessment
+  if (marketSize.includes('billion') || marketSize.includes('$b')) score += 25;
+  else if (marketSize.includes('million') || marketSize.includes('$m')) score += 15;
+  else if (marketSize.length > 50) score += 10;
+  else if (marketSize.length > 0) score += 5;
+  
+  // Market description quality
+  if (marketSize.includes('tam') || marketSize.includes('addressable')) score += 10;
+  if (marketSize.includes('growing') || marketSize.includes('growth')) score += 5;
+  if (marketSize.includes('research') || marketSize.includes('report')) score += 5;
+  
+  // Pain point analysis
+  const painPoint = answers.pain_point_usp?.toLowerCase() || '';
+  if (painPoint.length > 100) score += 15;
+  else if (painPoint.length > 50) score += 10;
+  else if (painPoint.length > 0) score += 5;
+  
+  // USP clarity
+  if (painPoint.includes('unique') || painPoint.includes('differentiat')) score += 10;
+  if (painPoint.includes('competitive advantage')) score += 10;
+  
+  return Math.min(score, 100);
+};
+
+const analyzeTraction = (answers: FormAnswers): number => {
+  let score = 0;
+  const traction = answers.traction?.toLowerCase() || '';
+  
+  // Revenue indicators
+  if (traction.includes('revenue') || traction.includes('sales')) {
+    if (traction.includes('million') || traction.includes('$m')) score += 30;
+    else if (traction.includes('thousand') || traction.includes('$k')) score += 20;
+    else score += 15;
+  }
+  
+  // Customer metrics
+  if (traction.includes('customers') || traction.includes('users')) {
+    if (traction.match(/\d+k|\d+,\d+/)) score += 20;
+    else if (traction.match(/\d+/)) score += 15;
+  }
+  
+  // Growth indicators
+  if (traction.includes('growth') || traction.includes('growing')) score += 10;
+  if (traction.includes('recurring') || traction.includes('subscription')) score += 15;
+  if (traction.includes('pilot') || traction.includes('poc')) score += 10;
+  
+  // Partnerships
+  if (traction.includes('partnership') || traction.includes('enterprise')) score += 15;
+  
+  // Length and detail
+  if (traction.length > 100) score += 10;
+  else if (traction.length > 50) score += 5;
+  
+  return Math.min(score, 100);
+};
+
+const analyzeTeam = (answers: FormAnswers): number => {
+  let score = 0;
+  const team = answers.team?.toLowerCase() || '';
+  
+  // Experience indicators
+  if (team.includes('years') || team.includes('experience')) score += 15;
+  if (team.includes('founded') || team.includes('entrepreneur')) score += 10;
+  if (team.includes('technical') || team.includes('engineer')) score += 15;
+  if (team.includes('business') || team.includes('sales')) score += 10;
+  
+  // Education/Background
+  if (team.includes('university') || team.includes('mba') || team.includes('phd')) score += 10;
+  if (team.includes('worked at') || team.includes('previously')) score += 10;
+  
+  // Team composition
+  if (team.includes('co-founder') || team.includes('team of')) score += 15;
+  if (team.includes('advisor') || team.includes('mentor')) score += 10;
+  
+  // Domain expertise
+  if (team.includes('domain') || team.includes('industry')) score += 15;
+  
+  // Detail level
+  if (team.length > 150) score += 15;
+  else if (team.length > 100) score += 10;
+  else if (team.length > 50) score += 5;
+  
+  return Math.min(score, 100);
+};
+
+const analyzeVision = (answers: FormAnswers): number => {
+  let score = 0;
+  const vision = answers.vision?.toLowerCase() || '';
+  
+  // Vision clarity and length
+  if (vision.length > 200) score += 20;
+  else if (vision.length > 100) score += 15;
+  else if (vision.length > 50) score += 10;
+  else if (vision.length > 0) score += 5;
+  
+  // Strategic thinking
+  if (vision.includes('transform') || vision.includes('revolutionize')) score += 15;
+  if (vision.includes('scale') || vision.includes('global')) score += 10;
+  if (vision.includes('platform') || vision.includes('ecosystem')) score += 10;
+  
+  // Problem solving focus
+  if (vision.includes('solve') || vision.includes('solution')) score += 10;
+  if (vision.includes('impact') || vision.includes('change')) score += 10;
+  
+  // Market understanding
+  if (vision.includes('market') || vision.includes('industry')) score += 5;
+  if (vision.includes('customers') || vision.includes('users')) score += 5;
+  
+  return Math.min(score, 100);
+};
+
+const analyzeBusinessModel = (answers: FormAnswers): number => {
+  let score = 0;
+  
+  // Funding and valuation understanding
+  const askVal = answers.ask_valuation?.toLowerCase() || '';
+  if (askVal.length > 50) score += 15;
+  else if (askVal.length > 0) score += 5;
+  
+  if (askVal.includes('valuation') || askVal.includes('million')) score += 15;
+  if (askVal.includes('revenue multiple') || askVal.includes('comparable')) score += 10;
+  
+  // Use of proceeds clarity
+  const useProceeds = answers.use_of_proceeds?.toLowerCase() || '';
+  if (useProceeds.length > 100) score += 15;
+  else if (useProceeds.length > 50) score += 10;
+  else if (useProceeds.length > 0) score += 5;
+  
+  if (useProceeds.includes('hire') || useProceeds.includes('team')) score += 10;
+  if (useProceeds.includes('marketing') || useProceeds.includes('sales')) score += 10;
+  if (useProceeds.includes('product') || useProceeds.includes('development')) score += 10;
+  
+  // Exit strategy
+  const exit = answers.exit_potential?.toLowerCase() || '';
+  if (exit.length > 50) score += 15;
+  else if (exit.length > 0) score += 5;
+  
+  if (exit.includes('acquisition') || exit.includes('ipo')) score += 15;
+  if (exit.includes('strategic') || exit.includes('buyer')) score += 10;
+  
+  return Math.min(score, 100);
+};
+
+const identifyStrengths = (answers: FormAnswers): string[] => {
+  const strengths: string[] = [];
+  
+  // Market strengths
+  const marketSize = answers.market_size?.toLowerCase() || '';
+  if (marketSize.includes('billion')) strengths.push('Large addressable market opportunity (TAM >$1B)');
+  if (marketSize.includes('growing') || marketSize.includes('growth')) strengths.push('Operating in a growing market segment');
+  
+  // Traction strengths
+  const traction = answers.traction?.toLowerCase() || '';
+  if (traction.includes('revenue')) strengths.push('Revenue-generating business with proven market demand');
+  if (traction.includes('customers') && traction.match(/\d+/)) strengths.push('Established customer base with quantified metrics');
+  if (traction.includes('recurring')) strengths.push('Recurring revenue model demonstrates customer retention');
+  
+  // Team strengths
+  const team = answers.team?.toLowerCase() || '';
+  if (team.includes('experience') && team.includes('years')) strengths.push('Experienced founding team with relevant industry background');
+  if (team.includes('technical') && team.includes('business')) strengths.push('Balanced team with both technical and business expertise');
+  if (team.includes('founded') || team.includes('entrepreneur')) strengths.push('Serial entrepreneurs with startup experience');
+  
+  // Vision and strategy
+  const vision = answers.vision || '';
+  if (vision.length > 150) strengths.push('Clear and comprehensive long-term vision');
+  if (vision.toLowerCase().includes('platform') || vision.toLowerCase().includes('ecosystem')) strengths.push('Scalable platform approach with network effects potential');
+  
+  // Business model
+  if (answers.ask_valuation && answers.ask_valuation.length > 50) strengths.push('Well-researched valuation methodology and funding strategy');
+  if (answers.industries && answers.industries.length > 1) strengths.push('Multi-industry applicability reduces market concentration risk');
+  
+  return strengths.slice(0, 6); // Limit to top 6 strengths
+};
+
+const identifyWeaknesses = (answers: FormAnswers): string[] => {
+  const weaknesses: string[] = [];
+  
+  // Market weaknesses
+  if (!answers.market_size || answers.market_size.length < 50) {
+    weaknesses.push('Insufficient market size analysis and quantification');
+  }
+  
+  // Traction weaknesses
+  const traction = answers.traction?.toLowerCase() || '';
+  if (!traction.includes('revenue') && !traction.includes('customers')) {
+    weaknesses.push('Limited evidence of market traction and customer validation');
+  }
+  if (traction.length < 50) {
+    weaknesses.push('Lack of detailed traction metrics and growth indicators');
+  }
+  
+  // Team weaknesses
+  if (!answers.team || answers.team.length < 100) {
+    weaknesses.push('Incomplete team information and experience backgrounds');
+  }
+  
+  // Vision weaknesses
+  if (!answers.vision || answers.vision.length < 100) {
+    weaknesses.push('Underdeveloped strategic vision and market approach');
+  }
+  
+  // Business model weaknesses
+  if (!answers.ask_valuation || answers.ask_valuation.length < 30) {
+    weaknesses.push('Unclear funding requirements and valuation justification');
+  }
+  if (!answers.use_of_proceeds || answers.use_of_proceeds.length < 50) {
+    weaknesses.push('Vague use of proceeds and capital allocation strategy');
+  }
+  
+  // Industry focus
+  if (!answers.industries || answers.industries.length === 0) {
+    weaknesses.push('Lack of clear industry focus and target market definition');
+  }
+  
+  return weaknesses.slice(0, 5); // Limit to top 5 weaknesses
+};
+
+const generateRecommendations = (answers: FormAnswers, score: number): string[] => {
+  const recommendations: string[] = [];
+  
+  if (score >= 80) {
+    recommendations.push('Proceed with comprehensive due diligence and financial modeling');
+    recommendations.push('Schedule management presentation and customer reference calls');
+    recommendations.push('Engage technical advisors for product and technology assessment');
+    recommendations.push('Prepare term sheet with standard venture capital terms');
+  } else if (score >= 60) {
+    recommendations.push('Request additional documentation addressing identified gaps');
+    recommendations.push('Schedule follow-up meeting with expanded market analysis');
+    recommendations.push('Consider pilot investment or convertible note structure');
+    recommendations.push('Provide specific feedback on business plan improvements');
+  } else {
+    recommendations.push('Comprehensive business plan revision required before investment consideration');
+    recommendations.push('Recommend participation in accelerator or incubator program');
+    recommendations.push('Suggest engagement with industry mentors and advisors');
+    recommendations.push('Focus on customer development and market validation');
+  }
+  
+  // Specific recommendations based on weaknesses
+  if (!answers.traction || answers.traction.length < 50) {
+    recommendations.push('Develop detailed traction metrics and customer case studies');
+  }
+  if (!answers.market_size || answers.market_size.length < 50) {
+    recommendations.push('Conduct thorough market research with TAM/SAM/SOM analysis');
+  }
+  
+  return recommendations.slice(0, 6);
+};
+
+const assessRisks = (answers: FormAnswers): string[] => {
+  const risks: string[] = [];
+  
+  // Market risks
+  if (!answers.market_size || !answers.market_size.toLowerCase().includes('billion')) {
+    risks.push('Limited market size may constrain scalability and returns');
+  }
+  
+  // Execution risks
+  if (!answers.team || answers.team.length < 100) {
+    risks.push('Incomplete team may lack capabilities for successful execution');
+  }
+  
+  // Traction risks
+  const traction = answers.traction?.toLowerCase() || '';
+  if (!traction.includes('revenue') && !traction.includes('customers')) {
+    risks.push('Lack of market validation increases product-market fit risk');
+  }
+  
+  // Financial risks
+  if (!answers.ask_valuation || answers.ask_valuation.length < 30) {
+    risks.push('Unclear funding strategy may indicate poor financial planning');
+  }
+  
+  // Competitive risks
+  if (!answers.pain_point_usp || answers.pain_point_usp.length < 50) {
+    risks.push('Weak differentiation may lead to competitive disadvantage');
+  }
+  
+  return risks.slice(0, 4);
+};
+
+const generateMarketAnalysis = (answers: FormAnswers): string => {
+  const marketSize = answers.market_size || '';
+  
+  if (marketSize.toLowerCase().includes('billion')) {
+    return 'Strong market opportunity with large addressable market. The startup operates in a substantial market with significant growth potential.';
+  } else if (marketSize.toLowerCase().includes('million')) {
+    return 'Moderate market opportunity. While the market size is meaningful, scalability may be limited compared to billion-dollar markets.';
+  } else {
+    return 'Market opportunity requires further validation. More detailed market research and sizing analysis needed to assess true potential.';
+  }
+};
+
+const generateTractionAnalysis = (answers: FormAnswers): string => {
+  const traction = answers.traction?.toLowerCase() || '';
+  
+  if (traction.includes('revenue')) {
+    return 'Strong traction demonstrated through revenue generation. This indicates product-market fit and customer willingness to pay.';
+  } else if (traction.includes('customers') || traction.includes('users')) {
+    return 'Good customer acquisition progress. Focus should be on monetization and revenue generation strategies.';
+  } else {
+    return 'Limited traction evidence. Startup needs to focus on customer development and market validation.';
+  }
+};
+
+const generateTeamAnalysis = (answers: FormAnswers): string => {
+  const team = answers.team?.toLowerCase() || '';
+  
+  if (team.includes('experience') && team.includes('technical') && team.includes('business')) {
+    return 'Well-rounded team with complementary skills and relevant experience. Strong foundation for execution.';
+  } else if (team.includes('experience') || team.includes('founded')) {
+    return 'Experienced team with some relevant background. May benefit from additional expertise in key areas.';
+  } else {
+    return 'Team composition and experience require further evaluation. Consider adding advisors or key hires.';
+  }
+};
+
+const generateInvestmentRecommendation = (answers: FormAnswers, score: number): string => {
+  if (score >= 80) {
+    return 'STRONG RECOMMENDATION: High-potential investment opportunity with solid fundamentals. Proceed with term sheet preparation.';
+  } else if (score >= 60) {
+    return 'CONDITIONAL RECOMMENDATION: Promising opportunity requiring additional due diligence and gap addressing.';
+  } else {
+    return 'NOT RECOMMENDED: Significant development needed before investment readiness. Maintain for future monitoring.';
+  }
+};
+
+export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const calculateBasicScore = () => {
+      let score = 0;
+      
+      // Short description scoring
+      if (answers.short_description && answers.short_description.length > 50) score += 15;
+      else if (answers.short_description && answers.short_description.length > 20) score += 10;
+      else if (answers.short_description && answers.short_description.length > 0) score += 5;
+      
+      // Vision scoring
+      if (answers.vision && answers.vision.length > 100) score += 20;
+      else if (answers.vision && answers.vision.length > 50) score += 15;
+      else if (answers.vision && answers.vision.length > 0) score += 8;
+      
+      // Market size scoring
+      if (answers.market_size) {
+        if (answers.market_size.toLowerCase().includes('billion')) score += 20;
+        else if (answers.market_size.toLowerCase().includes('million')) score += 15;
+        else if (answers.market_size.length > 50) score += 10;
+        else if (answers.market_size.length > 0) score += 5;
+      }
+      
+      // Traction scoring
+      if (answers.traction) {
+        if (answers.traction.toLowerCase().includes('revenue')) score += 20;
+        else if (answers.traction.toLowerCase().includes('customers')) score += 15;
+        else if (answers.traction.length > 50) score += 10;
+        else if (answers.traction.length > 0) score += 5;
+      }
+      
+      // Team scoring
+      if (answers.team && answers.team.length > 100) score += 15;
+      else if (answers.team && answers.team.length > 50) score += 10;
+      else if (answers.team && answers.team.length > 0) score += 5;
+      
+      // Industry diversity bonus
+      if (answers.industries && answers.industries.length > 2) score += 10;
+      else if (answers.industries && answers.industries.length > 1) score += 7;
+      else if (answers.industries && answers.industries.length > 0) score += 3;
+      
+      return Math.min(score, 100);
+    };
+
+    const performAnalysis = async () => {
+      setIsLoading(true);
+      try {
+        const analysis = await analyzeStartup(answers);
+        setAiAnalysis(analysis);
+      } catch (error) {
+        console.error('All analysis methods failed:', error);
+        // Final fallback to basic scoring
+        const basicScore = calculateBasicScore();
+        setAiAnalysis({
+          score: basicScore,
+          rating: basicScore >= 80 ? 'High Potential' : basicScore >= 60 ? 'Promising' : 'Needs Improvement',
+          strengths: ['Analysis completed with basic scoring', 'Company information provided'],
+          weaknesses: ['AI analysis temporarily unavailable', 'Limited automated assessment'],
+          recommendations: ['Contact support for detailed AI analysis', 'Consider providing more detailed information'],
+          marketAnalysis: 'Basic market assessment completed. Full AI analysis temporarily unavailable.',
+          tractionAnalysis: 'Basic traction assessment completed. Full AI analysis temporarily unavailable.', 
+          teamAnalysis: 'Basic team assessment completed. Full AI analysis temporarily unavailable.',
+          riskFactors: ['AI analysis system temporarily unavailable'],
+          investmentRecommendation: 'Manual review recommended due to technical limitations. Basic scoring suggests ' + 
+            (basicScore >= 80 ? 'strong potential' : basicScore >= 60 ? 'moderate potential' : 'development needed') + '.'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    performAnalysis();
+  }, [answers]);
+
+
+  const score = aiAnalysis?.score || 0;
+  const rating = aiAnalysis?.rating || 'Analyzing...';
   const ratingColor = score >= 80 ? 'bg-green-100 text-green-800' : score >= 60 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
 
   const generatePDFFile = () => {
@@ -388,6 +811,26 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
     }
   };
 
+  if (isLoading) {
+    return (
+      <motion.div
+        variants={fade}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
+        <h2 className="text-lg sm:text-xl font-semibold mb-4">{title}</h2>
+        <div className="max-w-xl mx-auto p-6 bg-white shadow-md rounded-lg font-sans space-y-4">
+          <div className="flex items-center justify-center space-x-2 py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="text-lg">AI is analyzing your startup...</span>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       variants={fade}
@@ -397,10 +840,11 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
       <h2 className="text-lg sm:text-xl font-semibold mb-4">{title}</h2>
-      <div className="max-w-xl mx-auto p-6 bg-white shadow-md rounded-lg font-sans space-y-4">
+      <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg font-sans space-y-6">
+        {/* Score Section */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">Your MoonCro score:</span>
+            <span className="text-sm font-medium">Your MoonCro AI Score:</span>
             <span className="bg-blue-600 text-white px-3 py-1 text-sm rounded-full">{score}/100</span>
             <span className={`text-sm px-2 py-1 rounded ${ratingColor}`}>{rating}</span>
           </div>
@@ -408,17 +852,115 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
 
         <h3 className="text-xl font-bold mt-4">{answers.startup_name || 'Company Summary'}</h3>
 
+        {/* AI Investment Recommendation */}
+        {aiAnalysis && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h4 className="text-lg font-medium text-blue-900">AI Investment Recommendation</h4>
+                <p className="mt-2 text-blue-700">{aiAnalysis.investmentRecommendation}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <button 
           onClick={generatePDFFile}
           className="w-full bg-blue-900 text-white py-2 rounded-md hover:bg-blue-800 transition-colors"
         >
-          Download Detailed Report
+          Download Detailed AI Analysis Report
         </button>
 
         <hr />
 
+        {/* AI Analysis Sections */}
+        {aiAnalysis && (
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Strengths */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-green-800">🎯 Key Strengths</h4>
+              <ul className="space-y-2">
+                {aiAnalysis.strengths.map((strength, index) => (
+                  <li key={index} className="text-sm text-green-700 flex items-start">
+                    <span className="text-green-500 mr-2">✓</span>
+                    {strength}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Areas for Improvement */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-orange-800">🔧 Areas for Improvement</h4>
+              <ul className="space-y-2">
+                {aiAnalysis.weaknesses.map((weakness, index) => (
+                  <li key={index} className="text-sm text-orange-700 flex items-start">
+                    <span className="text-orange-500 mr-2">⚠</span>
+                    {weakness}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* AI Recommendations */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-blue-800">💡 AI Recommendations</h4>
+              <ul className="space-y-2">
+                {aiAnalysis.recommendations.map((rec, index) => (
+                  <li key={index} className="text-sm text-blue-700 flex items-start">
+                    <span className="text-blue-500 mr-2">→</span>
+                    {rec}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Risk Factors */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-red-800">⚠️ Risk Factors</h4>
+              <ul className="space-y-2">
+                {aiAnalysis.riskFactors.map((risk, index) => (
+                  <li key={index} className="text-sm text-red-700 flex items-start">
+                    <span className="text-red-500 mr-2">!</span>
+                    {risk}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <hr />
+
+        {/* Detailed Analysis */}
+        {aiAnalysis && (
+          <div className="space-y-4">
+            <h4 className="font-bold text-gray-800">📊 Detailed AI Analysis</h4>
+            
+            <div className="grid gap-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h5 className="font-semibold text-gray-700 mb-2">Market Analysis</h5>
+                <p className="text-sm text-gray-600">{aiAnalysis.marketAnalysis}</p>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h5 className="font-semibold text-gray-700 mb-2">Traction Analysis</h5>
+                <p className="text-sm text-gray-600">{aiAnalysis.tractionAnalysis}</p>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h5 className="font-semibold text-gray-700 mb-2">Team Analysis</h5>
+                <p className="text-sm text-gray-600">{aiAnalysis.teamAnalysis}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <hr />
+
+        {/* Original Summary */}
         <div className="space-y-2 text-sm sm:text-base">
-          <h4 className="font-semibold">Summary</h4>
+          <h4 className="font-semibold">Company Summary</h4>
           <p><span className="font-semibold">Startup name:</span> {answers.startup_name || 'Not provided'}</p>
           <p><span className="font-semibold">Short description:</span> {answers.short_description}</p>
           <p><span className="font-semibold">Market size:</span> {answers.market_size}</p>
@@ -429,22 +971,22 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
         <hr />
 
         <div className="space-y-2">
-                      <div className="flex space-x-4">
-              <a 
-                href="mailto:hello@mooncro.com?subject=MoonCro%20feedback%20Support"
-                className="text-blue-700 font-medium hover:underline"
+          <div className="flex space-x-4">
+            <a 
+              href="mailto:hello@mooncro.com?subject=MoonCro%20AI%20Analysis%20Feedback"
+              className="text-blue-700 font-medium hover:underline"
+            >
+              Give Feedback on AI Analysis
+            </a>
+            {onReset && (
+              <button 
+                onClick={onReset}
+                className="text-green-700 font-medium hover:underline"
               >
-                Give Feedback
-              </a>
-              {onReset && (
-                <button 
-                  onClick={onReset}
-                  className="text-green-700 font-medium hover:underline"
-                >
-                  Start Over
-                </button>
-              )}
-            </div>
+                Start Over
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
