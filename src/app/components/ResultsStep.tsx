@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { FormAnswers } from '../types/form';
 import { jsPDF } from 'jspdf';
 import { useState, useEffect } from 'react';
-import { analyzeStartupWithAI, analyzeStartupFallback } from '../../services/openai-analysis';
 
 interface ResultsStepProps {
   title: string;
@@ -29,17 +28,36 @@ const fade = {
   exit: { opacity: 0 },
 };
 
-// AI Analysis Engine
+// Custom Analysis Engine
 const analyzeStartup = async (answers: FormAnswers): Promise<AIAnalysis> => {
-  try {
-    // Use OpenAI for comprehensive analysis
-    const analysis = await analyzeStartupWithAI(answers);
-    return analysis;
-  } catch (error) {
-    console.error('OpenAI analysis failed, using fallback:', error);
-    // Fallback to basic analysis if OpenAI fails
-    return await analyzeStartupFallback(answers);
-  }
+  // Use your custom analysis functions instead of AI
+  const marketScore = analyzeMarket(answers);
+  const tractionScore = analyzeTraction(answers);
+  const teamScore = analyzeTeam(answers);
+  const visionScore = analyzeVision(answers);
+  const businessScore = analyzeBusinessModel(answers);
+  
+  // Calculate weighted overall score
+  const score = Math.round(
+    (marketScore * 0.25) + 
+    (tractionScore * 0.25) + 
+    (teamScore * 0.20) + 
+    (visionScore * 0.15) + 
+    (businessScore * 0.15)
+  );
+  
+  return {
+    score,
+    rating: score >= 80 ? 'High Potential' : score >= 60 ? 'Promising' : 'Needs Improvement',
+    strengths: identifyStrengths(answers),
+    weaknesses: identifyWeaknesses(answers),
+    recommendations: generateRecommendations(answers, score),
+    marketAnalysis: generateMarketAnalysis(answers),
+    tractionAnalysis: generateTractionAnalysis(answers),
+    teamAnalysis: generateTeamAnalysis(answers),
+    riskFactors: assessRisks(answers),
+    investmentRecommendation: generateInvestmentRecommendation(answers, score)
+  };
 };
 
 
@@ -380,73 +398,11 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const calculateBasicScore = () => {
-      let score = 0;
-      
-      // Short description scoring
-      if (answers.short_description && answers.short_description.length > 50) score += 15;
-      else if (answers.short_description && answers.short_description.length > 20) score += 10;
-      else if (answers.short_description && answers.short_description.length > 0) score += 5;
-      
-      // Vision scoring
-      if (answers.vision && answers.vision.length > 100) score += 20;
-      else if (answers.vision && answers.vision.length > 50) score += 15;
-      else if (answers.vision && answers.vision.length > 0) score += 8;
-      
-      // Market size scoring
-      if (answers.market_size) {
-        if (answers.market_size.toLowerCase().includes('billion')) score += 20;
-        else if (answers.market_size.toLowerCase().includes('million')) score += 15;
-        else if (answers.market_size.length > 50) score += 10;
-        else if (answers.market_size.length > 0) score += 5;
-      }
-      
-      // Traction scoring
-      if (answers.traction) {
-        if (answers.traction.toLowerCase().includes('revenue')) score += 20;
-        else if (answers.traction.toLowerCase().includes('customers')) score += 15;
-        else if (answers.traction.length > 50) score += 10;
-        else if (answers.traction.length > 0) score += 5;
-      }
-      
-      // Team scoring
-      if (answers.team && answers.team.length > 100) score += 15;
-      else if (answers.team && answers.team.length > 50) score += 10;
-      else if (answers.team && answers.team.length > 0) score += 5;
-      
-      // Industry diversity bonus
-      if (answers.industries && answers.industries.length > 2) score += 10;
-      else if (answers.industries && answers.industries.length > 1) score += 7;
-      else if (answers.industries && answers.industries.length > 0) score += 3;
-      
-      return Math.min(score, 100);
-    };
-
     const performAnalysis = async () => {
       setIsLoading(true);
-      try {
-        const analysis = await analyzeStartup(answers);
-        setAiAnalysis(analysis);
-      } catch (error) {
-        console.error('All analysis methods failed:', error);
-        // Final fallback to basic scoring
-        const basicScore = calculateBasicScore();
-        setAiAnalysis({
-          score: basicScore,
-          rating: basicScore >= 80 ? 'High Potential' : basicScore >= 60 ? 'Promising' : 'Needs Improvement',
-          strengths: ['Analysis completed with basic scoring', 'Company information provided'],
-          weaknesses: ['AI analysis temporarily unavailable', 'Limited automated assessment'],
-          recommendations: ['Contact support for detailed AI analysis', 'Consider providing more detailed information'],
-          marketAnalysis: 'Basic market assessment completed. Full AI analysis temporarily unavailable.',
-          tractionAnalysis: 'Basic traction assessment completed. Full AI analysis temporarily unavailable.', 
-          teamAnalysis: 'Basic team assessment completed. Full AI analysis temporarily unavailable.',
-          riskFactors: ['AI analysis system temporarily unavailable'],
-          investmentRecommendation: 'Manual review recommended due to technical limitations. Basic scoring suggests ' + 
-            (basicScore >= 80 ? 'strong potential' : basicScore >= 60 ? 'moderate potential' : 'development needed') + '.'
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      const analysis = await analyzeStartup(answers);
+      setAiAnalysis(analysis);
+      setIsLoading(false);
     };
 
     performAnalysis();
@@ -624,7 +580,7 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
       yPos = badgeY + badgeHeight + 5;
       
       yPos += 10;
-      yPos = addText('Powered by MoonCro AI Assessment Platform', yPos, 10, 'italic');
+      yPos = addText('Powered by MoonCro Assessment Platform', yPos, 10, 'italic');
       yPos += 15;
 
       // 1. Executive Summary & Recommendation
@@ -796,7 +752,7 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
         <div className="max-w-xl mx-auto p-6 bg-white shadow-md rounded-lg font-sans space-y-4">
           <div className="flex items-center justify-center space-x-2 py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-lg">AI is analyzing your startup...</span>
+            <span className="text-lg">Analyzing your startup...</span>
           </div>
         </div>
       </motion.div>
@@ -816,7 +772,7 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
         {/* Score Section */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">Your MoonCro AI Score:</span>
+            <span className="text-sm font-medium">Your MoonCro Score:</span>
             <span className="bg-blue-600 text-white px-3 py-1 text-sm rounded-full">{score}/100</span>
             <span className={`text-sm px-2 py-1 rounded ${ratingColor}`}>{rating}</span>
           </div>
@@ -824,12 +780,12 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
 
         <h3 className="text-xl font-bold mt-4">{answers.startup_name || 'Company Summary'}</h3>
 
-        {/* AI Investment Recommendation */}
+        {/* Investment Recommendation */}
         {aiAnalysis && (
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
             <div className="flex">
               <div className="ml-3">
-                <h4 className="text-lg font-medium text-blue-900">AI Investment Recommendation</h4>
+                <h4 className="text-lg font-medium text-blue-900">Investment Recommendation</h4>
                 <p className="mt-2 text-blue-700">{aiAnalysis.investmentRecommendation}</p>
               </div>
             </div>
@@ -840,12 +796,12 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
           onClick={generatePDFFile}
           className="w-full bg-blue-900 text-white py-2 rounded-md hover:bg-blue-800 transition-colors"
         >
-          Download Detailed AI Analysis Report
+          Download Detailed Analysis Report
         </button>
 
         <hr />
 
-        {/* AI Analysis Sections */}
+        {/* Analysis Sections */}
         {aiAnalysis && (
           <div className="grid md:grid-cols-2 gap-6">
             {/* Strengths */}
@@ -876,7 +832,7 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
 
             {/* AI Recommendations */}
             <div className="space-y-3">
-              <h4 className="font-bold text-blue-800">💡 AI Recommendations</h4>
+              <h4 className="font-bold text-blue-800">💡 Recommendations</h4>
               <ul className="space-y-2">
                 {aiAnalysis.recommendations.map((rec, index) => (
                   <li key={index} className="text-sm text-blue-700 flex items-start">
@@ -907,7 +863,7 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
         {/* Detailed Analysis */}
         {aiAnalysis && (
           <div className="space-y-4">
-            <h4 className="font-bold text-gray-800">📊 Detailed AI Analysis</h4>
+            <h4 className="font-bold text-gray-800">📊 Detailed Analysis</h4>
             
             <div className="grid gap-4">
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -948,7 +904,7 @@ export function ResultsStep({ title, answers, onReset }: ResultsStepProps) {
               href="mailto:hello@mooncro.com?subject=MoonCro%20AI%20Analysis%20Feedback"
               className="text-blue-700 font-medium hover:underline"
             >
-              Give Feedback on AI Analysis
+              Give Feedback on Analysis
             </a>
             {onReset && (
               <button 
