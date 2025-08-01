@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         {/* <Navigation /> */}
-        <main className="py-8">
+        <main className="py-8 bg-white">
           {children}
         </main>
       </body>
