@@ -28,6 +28,17 @@ interface AIAnalysis {
   investmentRecommendation: string;
 }
 
+interface APIError extends Error {
+  status?: number;
+  code?: string;
+  type?: string;
+}
+
+// Type guard to check if error has API error properties
+function isAPIError(error: unknown): error is APIError {
+  return error instanceof Error;
+}
+
 // Initialize OpenAI client (server-side)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -166,36 +177,39 @@ Return ONLY valid JSON in this exact format:
 
     return NextResponse.json(sanitizedAnalysis);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('OpenAI API Error:', error);
-    console.error('Error details:', {
-      message: error?.message,
-      status: error?.status,
-      code: error?.code,
-      type: error?.type
-    });
     
-    // Handle specific OpenAI errors
-    if (error?.status === 429) {
-      return NextResponse.json(
-        { 
-          error: 'QUOTA_EXCEEDED',
-          message: 'OpenAI quota exceeded. Using fallback analysis.',
-          fallback: true
-        },
-        { status: 429 }
-      );
-    }
+    if (isAPIError(error)) {
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        type: error.type
+      });
+      
+      // Handle specific OpenAI errors
+      if (error.status === 429) {
+        return NextResponse.json(
+          { 
+            error: 'QUOTA_EXCEEDED',
+            message: 'OpenAI quota exceeded. Using fallback analysis.',
+            fallback: true
+          },
+          { status: 429 }
+        );
+      }
 
-    if (error?.status === 401) {
-      return NextResponse.json(
-        { 
-          error: 'INVALID_API_KEY',
-          message: 'OpenAI API key invalid. Using fallback analysis.',
-          fallback: true
-        },
-        { status: 401 }
-      );
+      if (error.status === 401) {
+        return NextResponse.json(
+          { 
+            error: 'INVALID_API_KEY',
+            message: 'OpenAI API key invalid. Using fallback analysis.',
+            fallback: true
+          },
+          { status: 401 }
+        );
+      }
     }
 
     // For other errors, return fallback flag

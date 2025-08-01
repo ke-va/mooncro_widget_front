@@ -42,35 +42,7 @@ const analyzeStartup = async (answers: FormAnswers): Promise<AIAnalysis> => {
   }
 };
 
-// Legacy analysis function - now used as fallback
-const performLegacyAnalysis = async (answers: FormAnswers): Promise<AIAnalysis> => {
-  // Advanced scoring algorithm with AI insights
-  const marketScore = analyzeMarket(answers);
-  const tractionScore = analyzeTraction(answers);
-  const teamScore = analyzeTeam(answers);
-  const visionScore = analyzeVision(answers);
-  const businessModelScore = analyzeBusinessModel(answers);
-  
-  const totalScore = Math.round((marketScore + tractionScore + teamScore + visionScore + businessModelScore) / 5);
-  
-  const strengths = identifyStrengths(answers);
-  const weaknesses = identifyWeaknesses(answers);
-  const recommendations = generateRecommendations(answers, totalScore);
-  const riskFactors = assessRisks(answers);
-  
-  return {
-    score: totalScore,
-    rating: totalScore >= 80 ? 'High Potential' : totalScore >= 60 ? 'Promising' : 'Needs Improvement',
-    strengths,
-    weaknesses,
-    recommendations,
-    marketAnalysis: generateMarketAnalysis(answers),
-    tractionAnalysis: generateTractionAnalysis(answers),
-    teamAnalysis: generateTeamAnalysis(answers),
-    riskFactors,
-    investmentRecommendation: generateInvestmentRecommendation(answers, totalScore)
-  };
-};
+
 
 const analyzeMarket = (answers: FormAnswers): number => {
   let score = 0;
